@@ -79,8 +79,8 @@ ZCode 现有外观能力：内置 5 种主题值（`light` / `dark` / `zai-light
 
 ### 3.4 受限 CSS 规则
 
-1. 注入时整体包裹在 `#zcode-theme-scope` 作用域下。
-2. 加载前静态扫描黑名单：`@import`、`url(`（含数据与外链地址）、`javascript:`、`@charset`。命中任一 → 整个 CSS 文件拒绝（token 仍生效），主题标记为「CSS 未通过安全校验」。
+1. 注入时使用 CSS 原生 `@scope (#root)` 包裹（挂载点 `#root` 在 Desktop renderer 与 Web 的 index.html 中均已存在）。`@scope` 需 Chromium 118+；不支持的浏览器整块忽略，主题附加样式静默降级（token 不受影响）。
+2. 加载前静态扫描黑名单：`@import`、`url(`（含数据与外链地址）、`image-set(`、`javascript:`、`@charset`。命中任一 → 整个 CSS 文件拒绝（token 仍生效），主题标记为「CSS 未通过安全校验」。CSS 上限 256 KiB。
 3. **威胁模型声明**：黑名单机制防误操作与低级注入，不是恶意对抗级沙箱。此声明写入本 spec 与主题作者文档。
 
 ### 3.5 字体原则
@@ -94,17 +94,19 @@ ZCode 现有外观能力：内置 5 种主题值（`light` / `dark` / `zai-light
 ### 4.1 所有权图
 
 ```
-┌─ CLI/Agent 侧（事实源）────────────────────┐
-│ 插件系统：已安装主题包清单、启用/停用状态     │
-│ → 复用现有插件生命周期（安装/启停/卸载/      │
-│   卸载内置后的抑制/恢复），语义不变           │
-│ → 新增：listThemes 查询（校验通过的主题      │
-│   token/CSS 路径清单）                       │
-└──────────────┬───────────────────────────┘
+┌─ CLI/Agent 侧（事实源）──────────────────────────────┐
+│ 插件系统：已安装主题包清单、启用/停用状态               │
+│ → 复用现有插件生命周期（安装/启停/卸载/                │
+│   卸载内置后的抑制/恢复），语义不变                     │
+│ → 新增：listThemes 查询（返回校验后的主题数据：        │
+│   tokens + CSS 内容 + suggestedFonts +                │
+│   valid/invalidReason；返回内容而非文件路径——          │
+│   Web 端渲染进程无法读取 CLI 文件系统）                 │
+└──────────────────┬─────────────────────────────────┘
                │ IPluginsService 扩展（RPC，现有通道）
 ┌──────────────▼───────────────────────────┐
 │ UI zustand store（唯一应用所有者）          │
-│ activeThemePluginId + 字体设置              │
+│ activeThemePluginKey + 字体设置              │
 │ localStorage 持久化 + 跨窗口广播            │
 │ （BROADCAST_FIELDS 新增字段，复用防回环机制）│
 └──────────────┬───────────────────────────┘
@@ -124,7 +126,7 @@ ZCode 现有外观能力：内置 5 种主题值（`light` / `dark` / `zai-light
 
 ### 4.2 应用算法（幂等，启动时重放）
 
-1. 读 store 的 `activeThemePluginId` → 在主题清单中查找。不存在（被卸载/停用）→ 回退默认主题并清空该 store 字段。
+1. 读 store 的 `activeThemePluginKey`（格式 `${pluginId}/${themeId}`，一个主题插件可携带多个主题）→ 在主题清单中查找。不存在（被卸载/停用）→ 回退默认主题并清空该 store 字段。
 2. 按当前明暗模式取 `tokens.light` / `tokens.dark` 写 CSS 变量；系统明暗切换事件触发时**重放**（挂接 `useTheme` 模式变化）。
 3. CSS 存在且校验通过 → 注入单个 `<style id="zcode-theme-plugin">`；切走主题 → 移除该标签（单标签整体替换，无残留）。
 4. 失败路径（文件丢失/读取失败/校验失败）→ 回退默认主题 + toast 提示原因；store 保留用户选择（修复后可恢复）。
@@ -180,7 +182,7 @@ ZCode 现有外观能力：内置 5 种主题值（`light` / `dark` / `zai-light
 | 插件发现 | `apps/zcode-cli/packages/adapters/src/plugins/` | manifest 解析 `themes` 字段、主题包扫描与 zod 校验 |
 | 协议/类型 | `packages/shared` | 主题清单与 token schema 类型 |
 | 服务通道 | `packages/services/src/plugins/` | `IPluginsService` 扩展 `listThemes` |
-| UI store | `packages/ui/src/store/` | `activeThemePluginId` + 字体字段 + 广播 |
+| UI store | `packages/ui/src/store/` | `activeThemePluginKey` + 字体字段 + 广播 |
 | UI 应用 | `packages/ui/src/lib/`（新 `themePlugin.ts`，对齐 `uiFontSize.ts` 模式） | `applyTheme()` |
 | 设置 UI | `packages/ui/src/settingsCodePreview.tsx` 及外观分区 | 三个新选择器 |
 | 基础 CSS | `packages/ui/src/styles.css` | 提取 `--font-sans` 变量、`#zcode-theme-scope` 说明 |
