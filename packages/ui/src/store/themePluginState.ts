@@ -67,7 +67,11 @@ export function createThemePluginState(writeState: ThemePluginStateWriter): Them
   };
 }
 
-/** 分发跨窗口广播：命中本切片字段即调用对应 setter 并返回 true，否则返回 false。 */
+/**
+ * 分发跨窗口广播：返回该 field 是否由本切片认领（未认领时调用方继续处理其他字段）。
+ * 字体族字段仅在 payload 为字符串时写回 setter；activeThemePluginKey 对非字符串
+ * payload 归一化为 null。
+ */
 export function applyThemePluginBroadcast(
   state: Pick<
     ThemePluginStateSlice,
