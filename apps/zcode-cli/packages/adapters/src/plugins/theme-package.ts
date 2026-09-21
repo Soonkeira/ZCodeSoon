@@ -1,11 +1,11 @@
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import {
   parsePluginThemeFile,
   scanThemeCssSafety,
   type PluginThemePackage,
 } from "@zcode/contracts";
-import { resolveInside } from "./helpers.js";
+import { fileExists, resolveInside } from "./helpers.js";
 import { collectComponentDirs } from "./plugin-components.js";
 
 const THEME_DEFAULT_DIR = "themes";
@@ -17,23 +17,29 @@ export interface CollectThemePackagesResult {
 
 /**
  * 扫描插件根下的主题目录（默认 themes/，可由 manifest.themes 以字符串/数组追加）。
- * 信任边界与 skills 一致：目录枚举不跟随符号链接（readdirSync withFileTypes 的
- * isDirectory() 对 symlink 返回 false）；css 相对路径经 resolveInside 防越界。
+ * 插件内容不可信，主题包按三层拒绝符号链接（含 Windows junction）：
+ * 1) 主题容器目录：collectComponentDirs 返回的每个 themesDir 自身是链接则整目录跳过；
+ * 2) 目录条目：readdirSync withFileTypes 的 isDirectory() 对链接返回 false，链接子目录不入选；
+ * 3) 文件：theme.json 与 css 都要求常规文件，链接分别记为 invalid / cssStatus=rejected。
+ * css 相对路径另经 resolveInside 防越界；与 skills 的差别在于文件级链接会产出带原因的结果供 UI 展示。
  */
 export function collectThemePackages(rootPath: string, manifestField: unknown): CollectThemePackagesResult {
   const packages: PluginThemePackage[] = [];
   const seenThemeIds = new Set<string>();
-  for (const themeRoot of collectComponentDirs(rootPath, manifestField, THEME_DEFAULT_DIR)) {
+  for (const themesDir of collectComponentDirs(rootPath, manifestField, THEME_DEFAULT_DIR)) {
+    // themesDir 自身是符号链接（含 junction）时整体跳过，不跟随到插件根之外。
+    if (isSymbolicLinkSync(themesDir)) continue;
     let dirNames: string[];
     try {
-      dirNames = readdirSync(themeRoot, { withFileTypes: true })
+      dirNames = readdirSync(themesDir, { withFileTypes: true })
         .filter((entry) => entry.isDirectory())
         .map((entry) => entry.name);
     } catch {
       continue;
     }
     for (const dirName of dirNames) {
-      const themePackage = readThemePackage(join(themeRoot, dirName), dirName);
+      const themePackage = readThemePackage(join(themesDir, dirName), dirName);
+      // 同 themeId 只保留首个声明（含 invalid 包），后续同 id 跳过。
       if (!themePackage || seenThemeIds.has(themePackage.themeId)) continue;
       seenThemeIds.add(themePackage.themeId);
       packages.push(themePackage);
@@ -44,10 +50,19 @@ export function collectThemePackages(rootPath: string, manifestField: unknown): 
 
 function readThemePackage(themeDir: string, dirName: string): PluginThemePackage | null {
   const manifestPath = join(themeDir, THEME_MANIFEST_FILE);
-  if (!existsSync(manifestPath)) return null;
+  if (isSymbolicLinkSync(manifestPath)) {
+    return invalidThemePackage(dirName, "theme.json must not be a symbolic link");
+  }
+  if (!fileExists(manifestPath)) return null;
+  let text: string;
+  try {
+    text = readFileSync(manifestPath, "utf8");
+  } catch (error) {
+    return invalidThemePackage(dirName, `theme.json could not be read: ${String(error)}`);
+  }
   let raw: unknown;
   try {
-    raw = JSON.parse(readFileSync(manifestPath, "utf8"));
+    raw = JSON.parse(text);
   } catch (error) {
     return invalidThemePackage(dirName, `theme.json is not valid JSON: ${String(error)}`);
   }
@@ -64,9 +79,10 @@ function readThemePackage(themeDir: string, dirName: string): PluginThemePackage
     if (!cssPath) {
       cssStatus = "rejected";
       cssRejectReason = `theme css path escapes the theme directory: ${theme.cssFile}`;
-    } else if (!existsSync(cssPath)) {
-      cssStatus = "missing";
-    } else {
+    } else if (isSymbolicLinkSync(cssPath)) {
+      cssStatus = "rejected";
+      cssRejectReason = "theme css must not be a symbolic link";
+    } else if (fileExists(cssPath)) {
       try {
         const candidate = readFileSync(cssPath, "utf8");
         const safety = scanThemeCssSafety(candidate);
@@ -106,4 +122,13 @@ function invalidThemePackage(themeId: string, reason: string): PluginThemePackag
     tokensDark: {},
     cssStatus: "missing",
   };
+}
+
+/** 只判定链接自身（不跟随），缺失或 lstat 失败均视为非链接。 */
+function isSymbolicLinkSync(path: string): boolean {
+  try {
+    return lstatSync(path).isSymbolicLink();
+  } catch {
+    return false;
+  }
 }

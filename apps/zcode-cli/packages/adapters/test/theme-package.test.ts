@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { collectThemePackages } from "@zcode/adapters/plugins";
+import { collectThemePackages } from "../src/plugins/index.ts";
 
 function makeThemeRoot(): string {
   return mkdtempSync(join(tmpdir(), "zcode-themes-"));
@@ -93,6 +93,94 @@ test("duplicate theme ids keep the first declaration only", () => {
     const { packages } = collectThemePackages(root, ["themes-a", "themes-b"]);
     assert.equal(packages.length, 1);
     assert.equal(packages[0]?.name, "Dup-themes-a");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("themes directory that is a junction is skipped entirely", () => {
+  const root = makeThemeRoot();
+  try {
+    mkdirSync(join(root, "real-themes", "linked"), { recursive: true });
+    writeFileSync(
+      join(root, "real-themes", "linked", "theme.json"),
+      JSON.stringify({ id: "linked", name: "Linked", tokens: {} }),
+    );
+    symlinkSync(join(root, "real-themes"), join(root, "themes"), "junction");
+    const { packages } = collectThemePackages(root, undefined);
+    assert.equal(packages.length, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("manifest-declared themes directory that is a junction is skipped", () => {
+  const root = makeThemeRoot();
+  try {
+    mkdirSync(join(root, "real-themes", "linked"), { recursive: true });
+    writeFileSync(
+      join(root, "real-themes", "linked", "theme.json"),
+      JSON.stringify({ id: "linked", name: "Linked", tokens: {} }),
+    );
+    symlinkSync(join(root, "real-themes"), join(root, "themes-link"), "junction");
+    const { packages } = collectThemePackages(root, "themes-link");
+    assert.equal(packages.length, 0);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("declared css file that does not exist reports cssStatus missing", () => {
+  const root = makeThemeRoot();
+  try {
+    mkdirSync(join(root, "themes", "nocssfile"), { recursive: true });
+    writeFileSync(
+      join(root, "themes", "nocssfile", "theme.json"),
+      JSON.stringify({ id: "nocssfile", name: "No CSS File", tokens: {}, css: "missing.css" }),
+    );
+    const { packages } = collectThemePackages(root, undefined);
+    const pkg = packages.find((item) => item.themeId === "nocssfile");
+    assert.ok(pkg);
+    assert.equal(pkg.valid, true);
+    assert.equal(pkg.cssStatus, "missing");
+    assert.equal(pkg.cssText, undefined);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("semantically invalid theme is flagged with reserved-token reason", () => {
+  const root = makeThemeRoot();
+  try {
+    mkdirSync(join(root, "themes", "badtoken"), { recursive: true });
+    writeFileSync(
+      join(root, "themes", "badtoken", "theme.json"),
+      JSON.stringify({ id: "badtoken", name: "Bad Token", tokens: { light: { "--font-sans": "Inter" } } }),
+    );
+    const { packages } = collectThemePackages(root, undefined);
+    const pkg = packages.find((item) => item.themeId === "badtoken");
+    assert.ok(pkg);
+    assert.equal(pkg.valid, false);
+    assert.match(pkg.invalidReason ?? "", /reserved/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("subdirectory without theme.json is not counted", () => {
+  const root = makeThemeRoot();
+  try {
+    mkdirSync(join(root, "themes", "empty-dir"), { recursive: true });
+    mkdirSync(join(root, "themes", "ok"), { recursive: true });
+    writeFileSync(
+      join(root, "themes", "ok", "theme.json"),
+      JSON.stringify({ id: "ok", name: "Ok", tokens: {} }),
+    );
+    const { packages } = collectThemePackages(root, undefined);
+    assert.deepEqual(
+      packages.map((item) => item.themeId),
+      ["ok"],
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

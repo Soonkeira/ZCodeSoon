@@ -972,14 +972,8 @@ function readManifest(path: string, diagnostics: PluginDiagnostic[]): PluginMani
  */
 export function loadPluginManifestFromRoot(rootPath: string): PluginManifest | null {
   const manifestPath = findManifest(rootPath);
-  if (!manifestPath) {
-    return null;
-  }
-  try {
-    return readManifest(manifestPath, []);
-  } catch {
-    return null;
-  }
+  // readManifest 内部已捕获解析异常并返回 null，这里无需重复 try/catch。
+  return manifestPath ? readManifest(manifestPath, []) : null;
 }
 
 function emptyOutcome(): PluginLoadOutcome {
