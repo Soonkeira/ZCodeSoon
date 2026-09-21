@@ -2595,7 +2595,7 @@ export const zcodeThemeFontSuggestionSchema = z
     code: z.string().optional(),
   })
   .strict();
-export type ZcodeThemeFontSuggestion = z.infer<typeof zcodeThemeFontSuggestionSchema>;
+export type ZCodeThemeFontSuggestion = z.infer<typeof zcodeThemeFontSuggestionSchema>;
 
 export const zcodeThemePackageSchema = z
   .object({
@@ -2613,7 +2613,7 @@ export const zcodeThemePackageSchema = z
     cssRejectReason: z.string().optional(),
   })
   .strict();
-export type ZcodeThemePackage = z.infer<typeof zcodeThemePackageSchema>;
+export type ZCodeThemePackage = z.infer<typeof zcodeThemePackageSchema>;
 
 export const zcodePluginsListThemesParamsSchema = z
   .object({
@@ -2621,7 +2621,7 @@ export const zcodePluginsListThemesParamsSchema = z
     configScope: zcodePluginScopeSchema.optional(),
   })
   .strict();
-export type ZcodePluginsListThemesParams = z.infer<typeof zcodePluginsListThemesParamsSchema>;
+export type ZCodePluginsListThemesParams = z.infer<typeof zcodePluginsListThemesParamsSchema>;
 
 export const zcodePluginsListThemesResultSchema = z
   .object({
@@ -2629,7 +2629,7 @@ export const zcodePluginsListThemesResultSchema = z
     diagnostics: z.array(zcodePluginDiagnosticSchema),
   })
   .strict();
-export type ZcodePluginsListThemesResult = z.infer<typeof zcodePluginsListThemesResultSchema>;
+export type ZCodePluginsListThemesResult = z.infer<typeof zcodePluginsListThemesResultSchema>;
 
 // ── Plugin 对话引用 catalog──
 // Session-scoped 只读投影：带 sessionId → 该 Session 创建时冻结的身份 catalog；
