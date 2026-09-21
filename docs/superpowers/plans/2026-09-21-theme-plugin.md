@@ -1312,6 +1312,11 @@ App 组件体内、L356 `const theme = useZCodeStore((s) => s.theme);` 附近加
   useThemePluginApplication();
 ```
 
+> **实现落地差异（审查后固化，以代码为准）**：
+> 1. 新增内部 `useResolvedThemeMode`（`theme === "system"` 时订阅 matchMedia change 并 bump revision），application effect 依赖 `resolvedMode` 而非 `theme`——否则 OS 明暗切换时 store 值不变、effect 不会重放（spec §4.2 第 2 步）。
+> 2. 列表 ready 且找不到 entry 时，除 DOM 回退外还会 `setActiveThemePluginKey(null)`（spec §4.2 第 1 步的"清空 store 字段"）。
+> 3. `useThemePlugins` 进入 loading 时同时 `setThemes([])`，避免用旧 workspace 列表短暂匹配 key。
+
 - [ ] **Step 3: 类型检查**
 
 Run: `pnpm exec tsc -b packages/ui`
@@ -1594,6 +1599,13 @@ export function FontFamilySelect({
   "settings.fontFamily.custom": "Custom…",
   "settings.fontFamily.customPlaceholder": "Enter a system font name, e.g. JetBrains Mono",
 ```
+
+> **实现落地差异（审查后固化，以代码为准）**：
+> 1. `SettingsRow` 实际 API 为 `control={...}`（非 children），三个选择器按其改写。
+> 2. Radix `SelectItem` 不接受空字符串 value（运行期 throw）：主题选择器用 `__none__` 哨兵、字体选择器用 `__default__` 哨兵映射回 `null`/`""`（对齐 `RemoteConnectionFields` 的 `DEFAULT_WSL_DISTRO_VALUE` 先例）。
+> 3. 为守住 `settingsCodePreview.tsx` 的 max-lines 400，主题包行与半覆盖/建议字体提示抽为 `settings/themePluginSelect.tsx`（与 `fontFamilySelect.tsx` 同构）。
+> 4. 半覆盖提示改用 `lib/themePlugin.ts` 的 `resolveDeclaredThemeMode(tokensLight, tokensDark)`：返回主题实际覆盖的唯一模式，双声明/双空返回 null（不提示）。
+> 5. `fontFamilySelect` 的 isCustom 由 value 确定性推导：外部重置为 `""` 时收起自定义输入框。
 
 - [ ] **Step 5: 类型检查 + lint**
 
