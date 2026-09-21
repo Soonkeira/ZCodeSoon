@@ -61,7 +61,7 @@ ZCode 现有外观能力：内置 5 种主题值（`light` / `dark` / `zai-light
   "id": "sereno-dark",
   "name": "Sereno Dark",
   "tokens": {
-    "light": { "--color-brand": "#7c5cff", "--radius": "0.75rem" },
+    "light": { "--color-brand": "#7c5cff", "--radius-lg": "0.75rem" },
     "dark": { "--color-brand": "#9d85ff" }
   },
   "suggestedFonts": { "ui": "Inter", "code": "JetBrains Mono" },

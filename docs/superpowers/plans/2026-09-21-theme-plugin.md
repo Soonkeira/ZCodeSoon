@@ -86,7 +86,7 @@ const validThemeFile = {
   id: "sereno-dark",
   name: "Sereno Dark",
   tokens: {
-    light: { "--color-brand": "#7c5cff", "--radius": "0.75rem" },
+    light: { "--color-brand": "#7c5cff", "--radius-lg": "0.75rem" },
     dark: { "--color-brand": "#9d85ff" },
   },
   suggestedFonts: { ui: "Inter", code: "JetBrains Mono" },
@@ -1638,7 +1638,7 @@ git commit -m "feat(ui): add theme plugin and font family settings selectors"
   "id": "sereno-dark",
   "name": "Sereno Dark",
   "tokens": {
-    "light": { "--color-brand": "#6d5bd0", "--radius": "0.75rem" },
+    "light": { "--color-brand": "#6d5bd0", "--radius-lg": "0.75rem" },
     "dark": { "--color-brand": "#a996ff" }
   },
   "suggestedFonts": { "ui": "Inter", "code": "JetBrains Mono" },
