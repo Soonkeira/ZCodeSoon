@@ -114,6 +114,9 @@ export function useThemePluginApplication(): void {
   // 该 effect 会因明暗重放、列表刷新与重渲染反复执行，用「主题 key + 原因」签名去重：
   // 只有切换到别的被拒主题或原因变化（如插件更新）才再次提示。
   const cssRejectedNoticeRef = useRef<string | null>(null);
+  // 选中的主题被打成 invalid（plugin 更新后 schema/变量越权等）时同样只提示一次：
+  // 按「主题 key + invalid」签名去重，避免每次重放重复弹 toast。
+  const invalidThemeNoticeRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!activeThemePluginKey) {
@@ -136,6 +139,26 @@ export function useThemePluginApplication(): void {
     applyPluginThemeCss(
       entry.cssStatus === "ok" && typeof entry.cssText === "string" ? entry.cssText : null,
     );
+
+    if (!entry.valid) {
+      // spec §6「应用时文件丢失 / 读取失败」与 §4.2 第 4 步：invalid 时没有可应用的 token/CSS，
+      // 只静默降级为默认外观，**不清空 activeThemePluginKey**，store 保留用户选择，
+      // 插件修好后下一次重放即可恢复（与卸载/停用清 key 的回退不同）。
+      const signature = `${themeEntryKey(entry)}|invalid`;
+      if (invalidThemeNoticeRef.current !== signature) {
+        invalidThemeNoticeRef.current = signature;
+        toast(
+          intl.formatMessage(
+            { id: "settings.themePlugin.invalidActive" },
+            {
+              name: entry.name,
+              reason: truncateCssRejectReason(entry.invalidReason ?? "") || "—",
+            },
+          ),
+          { variant: "warning" },
+        );
+      }
+    }
 
     if (entry.valid && entry.cssStatus === "rejected") {
       const signature = `${themeEntryKey(entry)}|${entry.cssRejectReason ?? ""}`;
