@@ -51,7 +51,7 @@ export function findThemeTokenProblem(key: string, value: string): string | null
     return `theme token "${key}" is outside the --color-* / --radius-* whitelist`;
   }
   if (key.startsWith("--color-") && !isValidThemeColorValue(value)) {
-    return `theme token "${key}" has an unsupported color value (expected #hex, rgb()/hsl()/oklch()/color-mix()/var(...) or a color keyword): ${value}`;
+    return `theme token "${key}" has an unsupported color value (expected #hex, rgb()/hsl()/oklch()/color-mix()/var(...) or transparent/currentcolor/inherit/initial): ${value}`;
   }
   if (key.startsWith("--radius-") && !isValidThemeGeometryValue(value)) {
     return `theme token "${key}" must use px or rem units: ${value}`;
@@ -114,7 +114,15 @@ export interface PluginThemeFileParsed {
   cssFile?: string;
 }
 
-/** schema + 语义校验的合并入口；失败时返回首因（含字段路径），供选择器置灰展示。 */
+/** 统一封顶 reason 长度：schema 的 issue.path 与 token 问题合并都可能超长，reason 会经 RPC 直达 UI。 */
+function clipThemeReason(reason: string): string {
+  if (reason.length <= MAX_THEME_REASON_LENGTH) {
+    return reason;
+  }
+  return `${reason.slice(0, MAX_THEME_REASON_LENGTH - 1)}…`;
+}
+
+/** schema + 语义校验的合并入口；失败时最多合并 8 条问题并整体截断，供选择器置灰展示。 */
 export function parsePluginThemeFile(
   raw: unknown,
 ): { ok: true; theme: PluginThemeFileParsed } | { ok: false; reason: string } {
@@ -123,13 +131,9 @@ export function parsePluginThemeFile(
     const issue = parsed.error.issues[0];
     const prefix = issue && issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
     // zod 会把 record key 拼进 issue.path，超长键会让 reason 失控，这里统一封顶
-    const reason = `${prefix}${issue?.message ?? "invalid theme.json"}`;
     return {
       ok: false,
-      reason:
-        reason.length > MAX_THEME_REASON_LENGTH
-          ? `${reason.slice(0, MAX_THEME_REASON_LENGTH - 1)}…`
-          : reason,
+      reason: clipThemeReason(`${prefix}${issue?.message ?? "invalid theme.json"}`),
     };
   }
   const data = parsed.data;
@@ -137,10 +141,10 @@ export function parsePluginThemeFile(
   const tokensDark = data.tokens.dark ?? {};
   const problems = [...findThemeTokenProblems(tokensLight), ...findThemeTokenProblems(tokensDark)];
   if (problems.length > 0) {
-    // 截断问题列表，防止 reason 经 RPC 直达 UI 时规模失控
+    // 问题列表截断 + 整体封顶，防止 reason 经 RPC 直达 UI 时规模失控
     const reported = problems.slice(0, MAX_REPORTED_THEME_PROBLEMS);
     const suffix = problems.length > MAX_REPORTED_THEME_PROBLEMS ? "; …" : "";
-    return { ok: false, reason: `${reported.join("; ")}${suffix}` };
+    return { ok: false, reason: clipThemeReason(`${reported.join("; ")}${suffix}`) };
   }
   return {
     ok: true,
