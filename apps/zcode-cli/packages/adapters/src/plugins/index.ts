@@ -97,6 +97,8 @@ export {
   type PluginUpdateStatus,
 } from "./version-compare.js";
 
+export { collectThemePackages } from "./theme-package.js";
+
 const ZCODE_MANIFEST_PATH = join(".zcode-plugin", "plugin.json");
 const CLAUDE_MANIFEST_PATH = join(".claude-plugin", "plugin.json");
 const CODEX_MANIFEST_PATH = join(".codex-plugin", "plugin.json");
@@ -960,6 +962,22 @@ function readManifest(path: string, diagnostics: PluginDiagnostic[]): PluginMani
       path,
       severity: "error",
     });
+    return null;
+  }
+}
+
+/**
+ * 按插件根目录读取 manifest（与 discover 相同的候选路径优先级）；失败返回 null。
+ * 主题包收集等展示链路使用，不做启用状态判断。
+ */
+export function loadPluginManifestFromRoot(rootPath: string): PluginManifest | null {
+  const manifestPath = findManifest(rootPath);
+  if (!manifestPath) {
+    return null;
+  }
+  try {
+    return readManifest(manifestPath, []);
+  } catch {
     return null;
   }
 }
