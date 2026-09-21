@@ -1667,6 +1667,10 @@ git commit -m "feat(ui): add theme plugin and font family settings selectors"
 }
 ```
 
+> **实现落地差异（审查后固化，以代码为准）**：
+> 1. 目录型市场源要求所选目录内含市场清单（`marketplace.ts` `findMarketplaceManifestPath`：`.claude-plugin/marketplace.json` 优先，其次根 `marketplace.json`），只有插件根的 fixture 实测报 `Marketplace manifest not found in directory`；示例因此重组为本地目录市场 `sereno-marketplace/`（根 `marketplace.json` + `plugins/sereno-theme/`），旧 `sereno-theme/` 路径作废，作者文档同步改写。
+> 2. 示例附加 CSS 的选择器改用应用真实存在的 `.text-wrap-phrase`（`packages/ui/src/styles.css:68`，用于自动化/已保存工作流描述文本），原 `.markdown-body` 在应用里不存在，无法观察。
+
 - [ ] **Step 2: 作者文档**
 
 创建 `docs/theme-plugin-authoring.md`（内容：manifest `themes` 字段说明、theme.json 格式与 token 白名单 `--color-*`/`--radius-*`、保留变量清单、附加 CSS 黑名单与 `@scope (#root)` 语义、256 KiB 上限、suggestedFonts 行为、威胁模型声明——黑名单非恶意对抗级沙箱、完整示例指向 `apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme/`）。
@@ -1710,7 +1714,7 @@ Expected: 无本次新增导出被报未使用（`loadPluginManifestFromRoot`、
 - [ ] **Step 4: 手动 E2E（Desktop）**
 
 1. `pnpm dev:desktop` 启动。
-2. 设置 → 插件商店 → 个人来源 → 添加本地目录：选 `apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme`，安装并启用。
+2. 设置 → 插件商店 → 个人来源 → 添加本地目录：选 `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace`（目录市场），安装并启用 `sereno-theme`。
 3. 设置 → 外观：主题包选择器出现「Sereno Dark（sereno-theme）」；选择后界面品牌色变化；切深/浅色模式 token 正确跟随。
 4. 界面/代码字体选择器切换即时生效；「一键应用」写入建议字体。
 5. 停用/卸载插件：自动回退默认主题，DevTools 确认 `<style id="zcode-theme-plugin">` 已移除、根节点无残留 token 内联变量。

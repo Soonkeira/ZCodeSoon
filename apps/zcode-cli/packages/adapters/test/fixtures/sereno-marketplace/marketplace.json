@@ -1,0 +1,11 @@
+{
+  "name": "sereno-marketplace",
+  "description": "Sereno 主题示例市场：本地目录市场，内含 sereno-theme 主题插件",
+  "plugins": [
+    {
+      "name": "sereno-theme",
+      "description": "Sereno 主题示例：演示 themes 组件类型的最低要求",
+      "source": "./plugins/sereno-theme"
+    }
+  ]
+}

@@ -3,31 +3,62 @@
 主题以插件形式分发。一个主题插件可以携带一个或多个主题；一个主题 = **design token 覆盖**（配色、圆角）+ **受限附加 CSS**。
 用户在「设置 → 外观 → 界面设置 → 主题包」中选择主题；主题只在插件安装并启用后出现，停用或卸载插件会自动回退默认外观。
 
-仓库内可直接安装的完整示例：[`apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme/`](../apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme/)。
+仓库内可直接安装的完整示例（本地目录市场 + 主题插件）：[`apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/`](../apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/)。
 
 ## 1. 快速开始
 
-最小主题插件的目录结构：
+本地目录市场的目录结构：市场清单在最外层，插件放在插件目录里。
 
 ```
-sereno-theme/
-├── .zcode-plugin/
-│   └── plugin.json          # 插件清单
-└── themes/                  # 主题目录（默认约定）
-    └── sereno-dark/
-        ├── theme.json       # 主题定义（必需）
-        └── overrides.css    # 附加样式（可选）
+sereno-marketplace/
+├── marketplace.json                 # 市场清单（本地目录市场必需）
+└── plugins/
+    └── sereno-theme/                # 插件根目录
+        ├── .zcode-plugin/
+        │   └── plugin.json          # 插件清单
+        └── themes/                  # 主题目录（默认约定）
+            └── sereno-dark/
+                ├── theme.json       # 主题定义（必需）
+                └── overrides.css    # 附加样式（可选）
 ```
 
-1. 复制示例目录，或按上面的结构新建，内容参考 `apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme/`。
-2. 安装插件：设置 → 插件 → 插件市场 → 添加插件市场 → 选择目录，指向插件根目录；安装后启用。
-3. 应用主题：设置 → 外观 → 界面设置 → 主题包，选择「Sereno Dark（sereno-theme）」。
+1. 复制示例目录，或按上面的结构新建，内容参考 `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/`。
+2. 添加市场：设置 → 插件 → 「个人」分段 → 添加插件市场 → 选择目录，选中市场根目录（含 `marketplace.json` 的那一层）。
+3. 安装并启用：在市场列表里安装 `sereno-theme`，再在插件列表启用它。
+4. 应用主题：设置 → 外观 → 界面设置 → 主题包，选择「Sereno Dark（sereno-theme）」。
 
-主题文件没有热更新：修改 `theme.json` 或 CSS 后，重新进入设置页（重新拉取主题清单）或重新选择主题才会生效。
+> 添加本地目录时只接受**含市场清单的目录**：直接指向只有 `plugin.json` 的插件目录会报 `Marketplace manifest not found in directory`。
+> 主题文件没有热更新：修改 `theme.json` 或 CSS 后需要重进设置页（或重启应用）才会生效，切换主题不会重新读盘。
 
-## 2. plugin.json：`themes` 字段
+## 2. 目录市场与插件清单
 
-插件清单位于 `.zcode-plugin/plugin.json`（同时兼容 `.claude-plugin/plugin.json`、`.codex-plugin/plugin.json`）：
+### 2.1 marketplace.json：市场清单
+
+本地目录要作为市场添加，根目录必须含市场清单，解析顺序为 `.claude-plugin/marketplace.json` → 根 `marketplace.json`（本示例用后者）：
+
+```json
+{
+  "name": "sereno-marketplace",
+  "description": "Sereno 主题示例市场：本地目录市场，内含 sereno-theme 主题插件",
+  "plugins": [
+    {
+      "name": "sereno-theme",
+      "description": "Sereno 主题示例：演示 themes 组件类型的最低要求",
+      "source": "./plugins/sereno-theme"
+    }
+  ]
+}
+```
+
+- `name`：市场 id，匹配 `^[a-z0-9][a-z0-9._-]{0,127}$`。
+- `description`：可选的市场说明。
+- `plugins`：数组（或 `{ 插件名: 条目 }` 映射）。条目的 `name` 必须与插件 `plugin.json` 的 `name` 一致；`source` 是相对市场根目录的插件路径（对象形式 `{ "source": "directory", "path": "<绝对路径>" }` 也可）。
+- 可选 `metadata.pluginRoot`：插件根基准目录，条目 `source` 相对它解析。
+- 条目 `strict` 默认 `true`，要求插件目录自带 `plugin.json`；`strict: false` 时才允许由条目合成插件清单。
+
+### 2.2 plugin.json：`themes` 字段
+
+插件清单位于插件根目录下的 `.zcode-plugin/plugin.json`（同时兼容 `.claude-plugin/plugin.json`、`.codex-plugin/plugin.json`）：
 
 ```json
 {
@@ -86,7 +117,9 @@ sereno-theme/
 - 生效方式：选中主题后，token 被写成**根元素（`<html>`）上的内联 CSS 变量**，覆盖内置变量；切换主题时会精确清除旧主题声明过的变量，不残留。
 - 明暗分别生效：`tokens.light` 在浅色模式下生效，`tokens.dark` 在深色模式下生效；主题为 `system` 时按解析后的实际明暗模式取值。
 - 只声明一组时做**半覆盖**：另一模式沿用内置配色，不报错；设置页会在选择器下方标注「该主题仅覆盖深色/浅色模式，另一模式沿用内置配色。」（建议两个模式都声明。）
-- 取值建议对照内置变量清单：`packages/ui/src/styles.css` 的 `@theme` 块（如 `--color-brand`、`--color-background`、`--color-foreground`、`--color-border`、`--radius-lg` 等）。
+- 取值建议：
+  - `--color-*` 对照内置变量清单：`packages/ui/src/styles.css` 的 `@theme` 块（如 `--color-brand`、`--color-background`、`--color-foreground`、`--color-border` 等）。
+  - `--radius-*` 对应 Tailwind v4 默认主题的圆角刻度（`rounded-*` 工具类消费这些变量，如 `--radius-sm`、`--radius-lg`），ZCode 的 `@theme` 并未定义它们；覆写即可改变使用这些刻度的圆角。
 
 ## 5. 附加 CSS：黑名单、体积上限与作用域
 
@@ -106,7 +139,7 @@ sereno-theme/
 
 **体积上限**：256 KiB，按 UTF-8 字节计量（262144 字节）；超出即整包拒绝。
 
-**作用域**：注入时整个文件被 `@scope (#root) { … }` 包裹，因此直接写普通选择器即可，例如 `.markdown-body h1 { … }`。`@scope` 需要 Chromium 118+；不支持 `@scope` 的浏览器会整块忽略该样式块（附加样式静默降级，token 不受影响）。
+**作用域**：注入时整个文件被 `@scope (#root) { … }` 包裹，因此直接写普通选择器即可。示例 `overrides.css` 选用应用真实使用的 `.text-wrap-phrase`（定义见 `packages/ui/src/styles.css`），便于在「设置 → 自动化 / 已保存工作流」的描述文本上观察效果。`@scope` 需要 Chromium 118+；不支持 `@scope` 的浏览器会整块忽略该样式块（附加样式静默降级，token 不受影响）。
 
 **符号链接与路径**：主题目录本身、`theme.json`、css 文件中任何一个是符号链接（含 Windows junction）都会被拒绝——主题目录级链接整体跳过；`theme.json` 为链接判为无效主题；`css` 为链接或路径越出主题目录则丢弃 CSS（token 仍生效）。
 
@@ -127,23 +160,25 @@ sereno-theme/
 
 ## 8. 本地调试
 
-1. 安装：设置 → 插件 → 插件市场 → 添加插件市场 → 选择目录，选中示例 `apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme`，安装并启用。
-2. 应用：设置 → 外观 → 界面设置 → 主题包，选择「Sereno Dark（sereno-theme）」。
-3. 校验：
+1. 添加市场：设置 → 插件 → 「个人」分段 → 添加插件市场 → 选择目录，选中示例 `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace`。
+2. 安装并启用：在市场列表安装 `sereno-theme`，再到插件列表启用它。
+3. 应用：设置 → 外观 → 界面设置 → 主题包，选择「Sereno Dark（sereno-theme）」。
+4. 校验：
    - `<html>` 元素上出现主题声明的内联变量（如 `--color-brand`），切换深/浅色模式时取值随之变化；
-   - 附加样式生效时 `<head>` 中存在单个 `<style id="zcode-theme-plugin">`，内容被 `@scope (#root) { … }` 包裹。
-4. 迭代：主题清单在进入设置页时重新拉取，无文件监听。修改 `theme.json` 或 CSS 后重新进入设置页（或重新选择主题）即可看到结果。
-5. 建议从最小主题开始：先只写 `id` / `name` / `tokens` 确认配色生效，再逐项加入 `css`、`suggestedFonts`。
+   - 附加样式生效时 `<head>` 中存在单个 `<style id="zcode-theme-plugin">`，内容被 `@scope (#root) { … }` 包裹；示例样式可在「设置 → 自动化 / 已保存工作流」的描述文本上看到 `letter-spacing` 变化。
+5. 迭代：主题清单只在设置页挂载时拉取，没有文件监听或热更新。修改 `theme.json` 或 CSS 后重进设置页或重启应用才能看到结果，切换主题不会重新读盘。
+6. 建议从最小主题开始：先只写 `id` / `name` / `tokens` 确认配色生效，再逐项加入 `css`、`suggestedFonts`。
 
 ## 9. 故障排查
 
-| 现象                             | 可能原因                                                                 | 处理                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| 选择器里没有我的主题             | 插件未安装或未启用；主题目录没有 `theme.json`；`themes` 声明的路径不存在 | 确认插件已启用，`themes/<id>/theme.json` 存在且路径相对插件根                                 |
-| 主题置灰并显示「（无效：原因）」 | `theme.json` 未通过 schema 或 token 校验                                 | 按原因修正：常见为字段拼写、token 用了白名单外变量、颜色/圆角取值非法；完整原因在选项悬停提示 |
-| 配色生效但附加样式没生效         | CSS 命中黑名单、超过 256 KiB、文件不存在，或 css 是链接/路径越界         | 用最小 CSS 二分定位；重点检查字符串或注释中的 `url(`；确认文件体积与路径                      |
-| 改了文件但界面没变化             | 主题清单只在进入设置页时拉取，无热更新                                   | 重新进入设置页，或先切到其他主题再切回                                                        |
-| 多个主题只有一个出现             | 主题包之间 `id` 重复                                                     | 同一插件内同 `id` 只保留扫描到的第一个，修改重复 `id`                                         |
-| 主题目录未被识别                 | 主题目录、`theme.json` 或 css 是符号链接                                 | 用真实目录与文件替换符号链接                                                                  |
+| 现象                                            | 可能原因                                                                 | 处理                                                                                          |
+| ----------------------------------------------- | ------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| 添加本地目录报 `Marketplace manifest not found` | 所选目录没有市场清单（指向了插件根或普通目录）                           | 在目录根放 `marketplace.json`（或 `.claude-plugin/marketplace.json`），插件放进子目录         |
+| 选择器里没有我的主题                            | 插件未安装或未启用；主题目录没有 `theme.json`；`themes` 声明的路径不存在 | 确认插件已启用，`themes/<id>/theme.json` 存在且路径相对插件根                                 |
+| 主题置灰并显示「（无效：原因）」                | `theme.json` 未通过 schema 或 token 校验                                 | 按原因修正：常见为字段拼写、token 用了白名单外变量、颜色/圆角取值非法；完整原因在选项悬停提示 |
+| 配色生效但附加样式没生效                        | CSS 命中黑名单、超过 256 KiB、文件不存在，或 css 是链接/路径越界         | 用最小 CSS 二分定位；重点检查字符串或注释中的 `url(`；确认文件体积与路径                      |
+| 改了文件但界面没变化                            | 主题清单只在设置页挂载时拉取，无热更新                                   | 重进设置页或重启应用（切换主题不会重新读盘）                                                  |
+| 多个主题只有一个出现                            | 主题包之间 `id` 重复                                                     | 同一插件内同 `id` 只保留扫描到的第一个，修改重复 `id`                                         |
+| 主题目录未被识别                                | 主题目录、`theme.json` 或 css 是符号链接                                 | 用真实目录与文件替换符号链接                                                                  |
 
-> CSS 被拒不会让主题失效：token 仍然生效（表现为配色正常但附加样式缺失）。拒绝原因随 `plugins/listThemes` 响应的 `cssStatus` / `cssRejectReason` 返回；当前设置页只为无效主题（theme.json 校验失败）显示原因，CSS 拒绝需按上表自查。
+> CSS 被拒不会让主题失效：token 仍然生效（表现为配色正常但附加样式缺失），选中该主题时会弹出警告提示「主题「…」的附加样式未通过安全校验，已仅应用配色。…」，同一主题同一原因只提示一次。设置页本身不展示 CSS 状态，排查时按上表对照黑名单与体积上限。

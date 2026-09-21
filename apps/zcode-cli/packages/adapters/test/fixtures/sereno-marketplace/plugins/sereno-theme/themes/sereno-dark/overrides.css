@@ -1,0 +1,6 @@
+/* 示例附加样式：只在 #root 作用域内生效（注入时由 @scope 包裹）。
+   .text-wrap-phrase 是应用真实使用的类（定义见 packages/ui/src/styles.css），
+   可在「设置 → 自动化 / 已保存工作流」的描述文本上观察效果。 */
+.text-wrap-phrase {
+  letter-spacing: 0.01em;
+}
