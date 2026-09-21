@@ -1,7 +1,7 @@
 import { readSafeLocalStorage, writeSafeLocalStorage } from "./browserEnvironment.js";
 
-export const THEME_PLUGIN_STYLE_ELEMENT_ID = "zcode-theme-plugin";
-export const ACTIVE_THEME_PLUGIN_STORAGE_KEY = "zcode-active-theme-plugin";
+const THEME_PLUGIN_STYLE_ELEMENT_ID = "zcode-theme-plugin";
+const ACTIVE_THEME_PLUGIN_STORAGE_KEY = "zcode-active-theme-plugin";
 export const UI_FONT_FAMILY_STORAGE_KEY = "zcode-ui-font-family";
 export const CODE_FONT_FAMILY_STORAGE_KEY = "zcode-code-font-family";
 
@@ -14,7 +14,7 @@ export const DEFAULT_CODE_FONT_STACK =
 const THEME_SCOPE_CONTAINER = "#root";
 const MAX_FONT_FAMILY_LENGTH = 128;
 
-export type ThemeMode = "light" | "dark";
+type ThemeMode = "light" | "dark";
 
 export function themeEntryKey(entry: { pluginId: string; themeId: string }): string {
   return `${entry.pluginId}/${entry.themeId}`;
