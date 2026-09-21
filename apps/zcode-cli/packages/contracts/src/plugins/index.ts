@@ -156,6 +156,7 @@ export interface PluginManifest {
   repository?: string;
   settings?: unknown;
   skills?: unknown;
+  themes?: unknown;
   userConfig?: Record<string, PluginUserConfigOption>;
   version?: string;
 }
@@ -280,3 +281,5 @@ export interface PluginPort {
     options?: PluginOperationOptions,
   ): Promise<PluginLoadOutcome>;
 }
+
+export * from "./theme-package.js";
