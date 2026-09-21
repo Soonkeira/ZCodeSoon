@@ -162,7 +162,11 @@ export function parsePluginThemeFile(
 /** 受限附加 CSS 黑名单（spec §3.4）：命中任一即整包拒绝；256 KiB 上限。 */
 const THEME_CSS_BLOCKED_PATTERN =
   /@import\b|@charset\b|\burl\s*\(|\bimage-set\s*\(|javascript\s*:/i;
-const MAX_THEME_CSS_LENGTH = 256 * 1024;
+/**
+ * 附加 CSS 的字节上限（spec §3.4）。导出给读取侧做体积预检：reader 先用文件大小拒绝，
+ * 避免把超大文件整体读进内存；上限只有这一处定义，预检与扫描不会漂移。
+ */
+export const MAX_THEME_CSS_LENGTH = 256 * 1024;
 
 /** 与 parsePluginThemeFile 对齐的判别联合：ok=false 时必带 reason。 */
 export type ThemeCssSafetyResult = { ok: true } | { ok: false; reason: string };

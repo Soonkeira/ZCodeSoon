@@ -3,6 +3,7 @@ import { mkdtempSync, mkdirSync, rmSync, symlinkSync, writeFileSync } from "node
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { MAX_THEME_CSS_LENGTH } from "@zcode/contracts";
 import { collectThemePackages } from "../src/plugins/index.ts";
 
 function makeThemeRoot(): string {
@@ -57,6 +58,31 @@ test("css blacklist rejection keeps tokens usable with cssStatus rejected", () =
     assert.equal(pkg.valid, true);
     assert.equal(pkg.cssStatus, "rejected");
     assert.match(pkg.cssRejectReason ?? "", /blocked/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("css file over the byte limit is rejected by the size pre-check", () => {
+  const root = makeThemeRoot();
+  try {
+    mkdirSync(join(root, "themes", "bigcss"), { recursive: true });
+    writeFileSync(
+      join(root, "themes", "bigcss", "theme.json"),
+      JSON.stringify({ id: "bigcss", name: "Big CSS", tokens: {}, css: "big.css" }),
+    );
+    const cssSize = MAX_THEME_CSS_LENGTH + 1;
+    // 内容本身是合法 CSS（不命中黑名单），拒绝只能来自读取前的 statSync 体积预检。
+    writeFileSync(join(root, "themes", "bigcss", "big.css"), "a".repeat(cssSize));
+    const { packages } = collectThemePackages(root, "themes");
+    const pkg = packages.find((item) => item.themeId === "bigcss");
+    assert.ok(pkg);
+    assert.equal(pkg.valid, true);
+    assert.equal(pkg.cssStatus, "rejected");
+    // 未被完整读取：拒绝时不产出 cssText。
+    assert.equal(pkg.cssText, undefined);
+    // reason 携带磁盘字节数，是预检分支独有的证据（扫描分支只报告上限）。
+    assert.match(pkg.cssRejectReason ?? "", new RegExp(`${cssSize} bytes`));
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

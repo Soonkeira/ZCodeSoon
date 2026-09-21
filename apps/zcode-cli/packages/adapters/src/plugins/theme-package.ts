@@ -1,6 +1,7 @@
-import { lstatSync, readFileSync, readdirSync } from "node:fs";
+import { lstatSync, readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import {
+  MAX_THEME_CSS_LENGTH,
   parsePluginThemeFile,
   scanThemeCssSafety,
   type PluginThemePackage,
@@ -11,7 +12,7 @@ import { collectComponentDirs } from "./plugin-components.js";
 const THEME_DEFAULT_DIR = "themes";
 const THEME_MANIFEST_FILE = "theme.json";
 
-export interface CollectThemePackagesResult {
+interface CollectThemePackagesResult {
   packages: PluginThemePackage[];
 }
 
@@ -84,14 +85,25 @@ function readThemePackage(themeDir: string, dirName: string): PluginThemePackage
       cssRejectReason = "theme css must not be a symbolic link";
     } else if (fileExists(cssPath)) {
       try {
-        const candidate = readFileSync(cssPath, "utf8");
-        const safety = scanThemeCssSafety(candidate);
-        if (safety.ok) {
-          cssText = candidate;
-          cssStatus = "ok";
-        } else {
+        // 体积预检（spec §3.4）：插件内容不可信，先按磁盘字节数拒绝超大 CSS，
+        // 不把整个文件读进内存；statSync 失败（文件被替换/删除）走下面的读取失败分支。
+        const cssSize = statSync(cssPath).size;
+        if (cssSize > MAX_THEME_CSS_LENGTH) {
           cssStatus = "rejected";
-          cssRejectReason = safety.reason;
+          // reason 带上实际字节数，便于作者定位（扫描分支只会报告上限本身）。
+          cssRejectReason = `theme css exceeds ${MAX_THEME_CSS_LENGTH} bytes (${cssSize} bytes)`;
+        } else {
+          const candidate = readFileSync(cssPath, "utf8");
+          // 读取后仍按内容的 UTF-8 字节数复核一次（双保险）：statSync 与实际内容之间
+          // 存在被替换/增长的时间窗，scan 的字节校验才是最终判据。
+          const safety = scanThemeCssSafety(candidate);
+          if (safety.ok) {
+            cssText = candidate;
+            cssStatus = "ok";
+          } else {
+            cssStatus = "rejected";
+            cssRejectReason = safety.reason;
+          }
         }
       } catch (error) {
         cssStatus = "rejected";

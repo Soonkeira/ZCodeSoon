@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  MAX_THEME_CSS_LENGTH,
   findThemeTokenProblem,
   parsePluginThemeFile,
   pluginThemeFileSchema,
@@ -92,6 +93,13 @@ test("parsePluginThemeFile merges token problems from both modes", () => {
 test("multi-byte css over the byte limit is rejected", () => {
   const css = "主".repeat(90_000); // UTF-16 length 90000 < 256KiB，UTF-8 字节 270000 > 256KiB
   assert.equal(scanThemeCssSafety(css).ok, false);
+});
+
+test("MAX_THEME_CSS_LENGTH is the exported 256 KiB limit used by size pre-checks", () => {
+  assert.equal(MAX_THEME_CSS_LENGTH, 256 * 1024);
+  // 边界与 scanThemeCssSafety 的「> 上限才拒绝」一致：恰好等于上限仍然通过。
+  assert.equal(scanThemeCssSafety("a".repeat(MAX_THEME_CSS_LENGTH)).ok, true);
+  assert.equal(scanThemeCssSafety("a".repeat(MAX_THEME_CSS_LENGTH + 1)).ok, false);
 });
 
 test("light-only theme keeps dark tokens empty", () => {
