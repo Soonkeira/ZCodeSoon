@@ -1,3 +1,4 @@
+import type { ZCodeThemePackage } from "@zcode/shared";
 import type { Theme } from "@/useTheme.js";
 import { useState } from "react";
 import { resolveTheme } from "@/useTheme.js";
@@ -21,6 +22,8 @@ import { getCodePreviewTheme } from "@/lib/codePreviewPreferences.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import type { CodePreviewSettings } from "@/store/index.js";
 import { THEME_MODES } from "@/settings/settingsPageConfig.js";
+import { FontFamilySelect } from "@/settings/fontFamilySelect.js";
+import { ThemePluginSelect } from "@/settings/themePluginSelect.js";
 import { MAX_UI_FONT_SIZE_PX, MIN_UI_FONT_SIZE_PX } from "@/lib/uiFontSize.js";
 
 function FontSizeInput({
@@ -85,6 +88,13 @@ export function AppearanceSectionContent({
   setTheme,
   uiFontSizePx,
   setUiFontSizePx,
+  themePlugins,
+  activeThemePluginKey,
+  setActiveThemePluginKey,
+  uiFontFamily,
+  setUiFontFamily,
+  codeFontFamily,
+  setCodeFontFamily,
 }: {
   codePreviewSettings: CodePreviewSettings;
   setCodePreviewSettings: (settings: Partial<CodePreviewSettings>) => void;
@@ -92,6 +102,13 @@ export function AppearanceSectionContent({
   setTheme: (theme: Theme) => void;
   uiFontSizePx: number;
   setUiFontSizePx: (fontSizePx: number) => void;
+  themePlugins: ZCodeThemePackage[];
+  activeThemePluginKey: string | null;
+  setActiveThemePluginKey: (key: string | null) => void;
+  uiFontFamily: string;
+  setUiFontFamily: (family: string) => void;
+  codeFontFamily: string;
+  setCodeFontFamily: (family: string) => void;
 }) {
   const { intl } = useZCodeIntl();
   const activePreviewMode = resolveTheme(theme);
@@ -150,6 +167,22 @@ export function AppearanceSectionContent({
                   onChange={setUiFontSizePx}
                   ariaLabel={intl.formatMessage({ id: "settings.uiFontSize" })}
                 />
+              }
+            />
+            <ThemePluginSelect
+              themePlugins={themePlugins}
+              value={activeThemePluginKey}
+              onChange={setActiveThemePluginKey}
+              setUiFontFamily={setUiFontFamily}
+              setCodeFontFamily={setCodeFontFamily}
+            />
+            <SettingsRow
+              label={intl.formatMessage({ id: "settings.uiFontFamily" })}
+              description={intl.formatMessage({
+                id: "settings.uiFontFamilyDescription",
+              })}
+              control={
+                <FontFamilySelect kind="ui" value={uiFontFamily} onChange={setUiFontFamily} />
               }
             />
           </CardContent>
@@ -235,6 +268,19 @@ export function AppearanceSectionContent({
                     value={codePreviewSettings.fontSizePx}
                     onChange={(fontSizePx) => setCodePreviewSettings({ fontSizePx })}
                     ariaLabel={intl.formatMessage({ id: "settings.fontSize" })}
+                  />
+                }
+              />
+              <SettingsRow
+                label={intl.formatMessage({ id: "settings.codeFontFamily" })}
+                description={intl.formatMessage({
+                  id: "settings.codeFontFamilyDescription",
+                })}
+                control={
+                  <FontFamilySelect
+                    kind="code"
+                    value={codeFontFamily}
+                    onChange={setCodeFontFamily}
                   />
                 }
               />

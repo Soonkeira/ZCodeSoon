@@ -1798,6 +1798,25 @@ const enUS: Record<string, string> = {
   "settings.uiFontSize": "UI font size",
   "settings.uiFontSizeDescription":
     "Adjust interface text without changing icons or layout dimensions.",
+  "settings.themePlugin": "Theme packs",
+  "settings.themePluginDescription":
+    "Pick a theme provided by an installed theme plugin. Uninstalling the plugin falls back to the built-in theme.",
+  "settings.themePlugin.none": "None (built-in themes)",
+  "settings.themePlugin.entry": "{name} ({plugin})",
+  "settings.themePlugin.invalid": "{name} (invalid: {reason})",
+  "settings.themePlugin.partialMode":
+    "This theme only overrides the {mode} mode; the other mode keeps built-in colors.",
+  "settings.themePlugin.suggestedFonts": "Suggested fonts: {fonts}",
+  "settings.themePlugin.applySuggested": "Apply",
+  "settings.uiFontFamily": "UI font",
+  "settings.uiFontFamilyDescription":
+    "Choose the font family for interface text. Leave empty to follow the default stack.",
+  "settings.codeFontFamily": "Code font",
+  "settings.codeFontFamilyDescription":
+    "Choose the monospace font family for code, terminal, and diffs. Independent from the UI font.",
+  "settings.fontFamily.default": "Default font",
+  "settings.fontFamily.custom": "Custom…",
+  "settings.fontFamily.customPlaceholder": "Enter a system font name, e.g. JetBrains Mono",
   "settings.systemTitle": "General",
   "settings.systemDescription": "These preferences affect the current window experience.",
   "settings.locale": "Language",

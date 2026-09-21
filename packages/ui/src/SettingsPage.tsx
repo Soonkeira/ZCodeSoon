@@ -96,6 +96,7 @@ import { ServiceProvider, useServices } from "@/hooks/useServices.js";
 import { useSettings } from "@/hooks/useSettingService.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
+import { useThemePlugins } from "@/hooks/useThemePlugins.js";
 import { resolveModelProviderConnectivityWorkspacePath } from "@/lib/modelProviderConnectivityTarget.js";
 import {
   createSettingsPageConfig,
@@ -343,6 +344,12 @@ export function SettingsPage({
   const setCodePreviewSettings = useZCodeStore((state) => state.setCodePreviewSettings);
   const uiFontSizePx = useZCodeStore((state) => state.uiFontSizePx);
   const setUiFontSizePx = useZCodeStore((state) => state.setUiFontSizePx);
+  const activeThemePluginKey = useZCodeStore((state) => state.activeThemePluginKey);
+  const setActiveThemePluginKey = useZCodeStore((state) => state.setActiveThemePluginKey);
+  const uiFontFamily = useZCodeStore((state) => state.uiFontFamily);
+  const setUiFontFamily = useZCodeStore((state) => state.setUiFontFamily);
+  const codeFontFamily = useZCodeStore((state) => state.codeFontFamily);
+  const setCodeFontFamily = useZCodeStore((state) => state.setCodeFontFamily);
   const notificationEnabled = useZCodeStore((state) => state.notificationEnabled);
   const setNotificationEnabled = useZCodeStore((state) => state.setNotificationEnabled);
   const notificationSoundEnabled = useZCodeStore((state) => state.notificationSoundEnabled);
@@ -620,6 +627,7 @@ export function SettingsPage({
     setActiveSettingsSection("usage");
   }, [setActiveSettingsSection]);
   const activeWorkspacePath = useTabStore((state) => state.activeWorkspacePath);
+  const { themes: themePlugins } = useThemePlugins(activeWorkspacePath);
   const tabs = useTabStore((state) => state.tabs);
   const workspaceTabs = useMemo(() => tabs.filter(isWorkspaceTab), [tabs]);
   // Settings 打开后 activeTab 会变成 settings，本地反查 activeTab 读 identity 会稳定丢失。
@@ -1803,6 +1811,13 @@ export function SettingsPage({
                                 failureStage: "local_commit",
                               })
                             }
+                            themePlugins={themePlugins}
+                            activeThemePluginKey={activeThemePluginKey}
+                            setActiveThemePluginKey={setActiveThemePluginKey}
+                            uiFontFamily={uiFontFamily}
+                            setUiFontFamily={setUiFontFamily}
+                            codeFontFamily={codeFontFamily}
+                            setCodeFontFamily={setCodeFontFamily}
                           />
                         ) : activeSection === "shortcuts" ? (
                           <ShortcutSettingsSection isDesktop={Boolean(isDesktop)} />
