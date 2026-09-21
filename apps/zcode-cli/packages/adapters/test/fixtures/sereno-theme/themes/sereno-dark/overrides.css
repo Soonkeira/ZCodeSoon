@@ -1,0 +1,4 @@
+/* 示例附加样式：只在 #root 作用域内生效（注入时由 @scope 包裹）。 */
+.markdown-body h1 {
+  letter-spacing: 0.01em;
+}

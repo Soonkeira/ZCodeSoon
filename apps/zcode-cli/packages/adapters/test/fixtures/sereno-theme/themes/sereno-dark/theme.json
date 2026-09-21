@@ -1,0 +1,10 @@
+{
+  "id": "sereno-dark",
+  "name": "Sereno Dark",
+  "tokens": {
+    "light": { "--color-brand": "#6d5bd0", "--radius-lg": "0.75rem" },
+    "dark": { "--color-brand": "#a996ff" }
+  },
+  "suggestedFonts": { "ui": "Inter", "code": "JetBrains Mono" },
+  "css": "overrides.css"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "sereno-theme",
+  "version": "1.0.0",
+  "description": "Sereno 主题示例：演示 themes 组件类型的最低要求",
+  "author": { "name": "ZCode Example" },
+  "themes": "themes"
+}
