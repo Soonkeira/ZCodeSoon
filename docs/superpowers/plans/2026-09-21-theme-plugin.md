@@ -373,7 +373,7 @@ import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { collectThemePackages } from "../src/plugins/theme-package.ts";
+import { collectThemePackages } from "../src/plugins/index.ts";
 
 function makeThemeRoot(): string {
   return mkdtempSync(join(tmpdir(), "zcode-themes-"));
@@ -471,8 +471,8 @@ test("duplicate theme ids keep the first declaration only", () => {
 
 - [ ] **Step 2: 运行确认失败**
 
-Run（`apps/zcode-cli/packages/adapters` 目录）: `node --test test/theme-package.test.ts`
-Expected: FAIL —— `Cannot find module .../adapters/src/plugins/theme-package.ts`。
+Run（`apps/zcode-cli/packages/adapters` 目录）: `node --import tsx --test test/theme-package.test.ts`
+Expected: FAIL —— `does not provide an export named 'collectThemePackages'`（tsx 负责解析源码内部 `.js`→`.ts`；无需先构建）。
 
 - [ ] **Step 3: 实现**
 
@@ -601,14 +601,8 @@ function invalidThemePackage(themeId: string, reason: string): PluginThemePackag
  */
 export function loadPluginManifestFromRoot(rootPath: string): PluginManifest | null {
   const manifestPath = findManifest(rootPath);
-  if (!manifestPath) {
-    return null;
-  }
-  try {
-    return readManifest(manifestPath);
-  } catch {
-    return null;
-  }
+  // readManifest 内部已捕获解析异常并返回 null，这里无需重复 try/catch。
+  return manifestPath ? readManifest(manifestPath, []) : null;
 }
 ```
 
@@ -618,10 +612,16 @@ export function loadPluginManifestFromRoot(rootPath: string): PluginManifest | n
 export { collectThemePackages } from "./theme-package.js";
 ```
 
+> **实现落地差异（审查后固化，以代码为准）**：最终实现比上面片段多了以下加固，测试从 4 条扩到 9 条：
+> 1. 符号链接三层策略（lstat）：themesDir 是链接 → 跳过；`theme.json` 是链接 → invalid + `must not be a symbolic link`；css 是链接 → `cssStatus:"rejected"` + 同名原因。
+> 2. `existsSync` 改用 `helpers.ts` 的 `fileExists`（isFile 语义）；theme.json 的 read 失败与 JSON parse 失败分开报错。
+> 3. `themeRoot` 更名为 `themesDir`；去重处补注「同 themeId 保留首个声明（含 invalid 包）」。
+> 4. 测试导入 `../src/plugins/index.ts`（tsx 解析源码，不依赖 dist）；新增 junction 目录跳过 ×2、css missing、reserved 语义无效、无 theme.json 子目录不计入等用例。
+
 - [ ] **Step 4: 运行确认通过**
 
-Run（`apps/zcode-cli/packages/adapters` 目录）: `node --test test/theme-package.test.ts`
-Expected: 全部 PASS。
+Run（`apps/zcode-cli/packages/adapters` 目录）: `node --import tsx --test test/theme-package.test.ts`
+Expected: 全部 PASS（最终实现为 9 条）。
 
 - [ ] **Step 5: 提交**
 
@@ -743,9 +743,9 @@ export async function listThemes(
   const themes: ZcodeThemePackage[] = [];
   for (const plugin of outcome.plugins) {
     if (!plugin.enabled) continue;
+    // 无 manifest 或未声明 themes 时仍扫描默认 themes/ 目录（spec §3.1：存在即扫描）。
     const manifest = loadPluginManifestFromRoot(plugin.rootPath);
-    if (!manifest || manifest.themes === undefined) continue;
-    const { packages } = collectThemePackages(plugin.rootPath, manifest.themes);
+    const { packages } = collectThemePackages(plugin.rootPath, manifest?.themes);
     for (const pkg of packages) {
       themes.push({
         pluginId: plugin.id,
@@ -925,7 +925,7 @@ test("buildFontStack composes family with the default stack", () => {
 
 - [ ] **Step 2: 运行确认失败**
 
-Run（`packages/ui` 目录）: `node --test test/themePlugin.test.ts`
+Run（`packages/ui` 目录）: `node --import tsx --test test/themePlugin.test.ts`
 Expected: FAIL —— `Cannot find module .../src/lib/themePlugin.ts`。
 
 - [ ] **Step 3: 实现 lib**
@@ -1073,7 +1073,7 @@ export function applyCodeFontFamily(family: string): void {
 
 - [ ] **Step 5: 运行确认通过**
 
-Run（`packages/ui` 目录）: `node --test test/themePlugin.test.ts`
+Run（`packages/ui` 目录）: `node --import tsx --test test/themePlugin.test.ts`
 Expected: 全部 PASS。
 
 - [ ] **Step 6: 提交**
