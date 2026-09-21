@@ -648,7 +648,7 @@ export const zcodeThemeFontSuggestionSchema = z
     code: z.string().optional(),
   })
   .strict();
-export type ZcodeThemeFontSuggestion = z.infer<typeof zcodeThemeFontSuggestionSchema>;
+export type ZCodeThemeFontSuggestion = z.infer<typeof zcodeThemeFontSuggestionSchema>;
 
 export const zcodeThemePackageSchema = z
   .object({
@@ -666,7 +666,7 @@ export const zcodeThemePackageSchema = z
     cssRejectReason: z.string().optional(),
   })
   .strict();
-export type ZcodeThemePackage = z.infer<typeof zcodeThemePackageSchema>;
+export type ZCodeThemePackage = z.infer<typeof zcodeThemePackageSchema>;
 
 export const zcodePluginsListThemesParamsSchema = z
   .object({
@@ -674,7 +674,7 @@ export const zcodePluginsListThemesParamsSchema = z
     configScope: zcodePluginScopeSchema.optional(),
   })
   .strict();
-export type ZcodePluginsListThemesParams = z.infer<typeof zcodePluginsListThemesParamsSchema>;
+export type ZCodePluginsListThemesParams = z.infer<typeof zcodePluginsListThemesParamsSchema>;
 
 export const zcodePluginsListThemesResultSchema = z
   .object({
@@ -682,7 +682,7 @@ export const zcodePluginsListThemesResultSchema = z
     diagnostics: z.array(zcodePluginDiagnosticSchema),
   })
   .strict();
-export type ZcodePluginsListThemesResult = z.infer<typeof zcodePluginsListThemesResultSchema>;
+export type ZCodePluginsListThemesResult = z.infer<typeof zcodePluginsListThemesResultSchema>;
 ```
 
 - [ ] **Step 2: 加方法词**
@@ -722,8 +722,8 @@ git commit -m "feat(shared): add plugins/listThemes protocol schema"
 import {
   // ...既有项...
   zcodePluginsListThemesParamsSchema,
-  type ZcodePluginsListThemesResult,
-  type ZcodeThemePackage,
+  type ZCodePluginsListThemesResult,
+  type ZCodeThemePackage,
 } from "@zcode/shared";
 // from "@zcode/adapters/plugins"（对齐同仓 bootstrap/src/plugins.ts:43 的既有导入写法）：
 import { collectThemePackages, loadPluginManifestFromRoot } from "@zcode/adapters/plugins";
@@ -740,7 +740,7 @@ export async function listThemes(
   // ↓ 与 listPlugins（同文件 L202-206）的上下文解析语句逐字一致 ↓
   // const { configResult, logger, workingDirectory } = ...（复制）
   const outcome = resolveZCodePlugins({ configResult, logger, workingDirectory });
-  const themes: ZcodeThemePackage[] = [];
+  const themes: ZCodeThemePackage[] = [];
   for (const plugin of outcome.plugins) {
     if (!plugin.enabled) continue;
     // 无 manifest 或未声明 themes 时仍扫描默认 themes/ 目录（spec §3.1：存在即扫描）。
@@ -1217,7 +1217,7 @@ git commit -m "feat(ui): persist theme plugin and font family preferences"
 
 ```ts
 import { useCallback, useEffect, useState } from "react";
-import type { ZcodeThemePackage } from "@zcode/shared";
+import type { ZCodeThemePackage } from "@zcode/shared";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
 import {
   applyPluginThemeCss,
@@ -1233,9 +1233,9 @@ export type ThemePluginsStatus = "idle" | "loading" | "ready" | "error";
 
 export function useThemePlugins(
   workspacePath: string | null | undefined,
-): { themes: ZcodeThemePackage[]; status: ThemePluginsStatus; refresh: () => void } {
+): { themes: ZCodeThemePackage[]; status: ThemePluginsStatus; refresh: () => void } {
   const services = useBaseWorkspaceServices();
-  const [themes, setThemes] = useState<ZcodeThemePackage[]>([]);
+  const [themes, setThemes] = useState<ZCodeThemePackage[]>([]);
   const [status, setStatus] = useState<ThemePluginsStatus>("idle");
   const [refreshTick, setRefreshTick] = useState(0);
   const refresh = useCallback(() => setRefreshTick((value) => value + 1), []);
@@ -1424,7 +1424,7 @@ export function FontFamilySelect({
 `AppearanceSectionContent` props（L81-95）追加：
 
 ```ts
-  themePlugins: ZcodeThemePackage[];
+  themePlugins: ZCodeThemePackage[];
   activeThemePluginKey: string | null;
   setActiveThemePluginKey: (key: string | null) => void;
   uiFontFamily: string;
@@ -1433,7 +1433,7 @@ export function FontFamilySelect({
   setCodeFontFamily: (family: string) => void;
 ```
 
-组件体内计算（imports 补 `type { ZcodeThemePackage }` from `@zcode/shared`、`themeEntryKey`/`pickTokensForMode` from `@/lib/themePlugin.js`、`FontFamilySelect` from `@/settings/fontFamilySelect.js`、`Button` from `@/components/ui/button.js`）：
+组件体内计算（imports 补 `type { ZCodeThemePackage }` from `@zcode/shared`、`themeEntryKey`/`pickTokensForMode` from `@/lib/themePlugin.js`、`FontFamilySelect` from `@/settings/fontFamilySelect.js`、`Button` from `@/components/ui/button.js`）：
 
 ```ts
   const activeThemeEntry = themePlugins.find(
@@ -1718,4 +1718,4 @@ Run: `pnpm dev:web`，浏览器打开 `http://localhost:5173`，重复上面 2-5
 
 1. **Spec 覆盖**：token 白名单（T1）、CSS 黑名单 + 256KiB（T1/T2）、目录发现与去重（T2）、协议内容态下发（T3/T4）、services 薄链路（T5）、幂等应用/回退/明暗重放（T6/T8）、store 持久化与广播（T7）、设置 UI 三选择器 + suggestedFonts 不静默覆盖（T9）、半覆盖标注（T6/T9）、示例与文档（T10）、验收（T11）。✔ 无缺口。
 2. **占位符扫描**：唯一非完整代码点是 T4 handler 的 context 解析三行——已明确指示「逐字复制同文件 listPlugins L202-206」，执行者打开该文件即可完成，不属于 TBD。✔
-3. **类型一致性**：`ZcodeThemePackage`（shared）↔ `PluginThemePackage`（contracts）字段一一对应；`themeEntryKey`/`pickTokensForMode` 在 T6 定义、T8/T9 使用一致；store 字段名 `activeThemePluginKey`/`uiFontFamily`/`codeFontFamily` 全程一致。✔
+3. **类型一致性**：`ZCodeThemePackage`（shared）↔ `PluginThemePackage`（contracts）字段一一对应；`themeEntryKey`/`pickTokensForMode` 在 T6 定义、T8/T9 使用一致；store 字段名 `activeThemePluginKey`/`uiFontFamily`/`codeFontFamily` 全程一致。✔
