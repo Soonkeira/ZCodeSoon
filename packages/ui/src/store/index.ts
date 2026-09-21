@@ -31,6 +31,17 @@ import {
   UI_FONT_SIZE_STORAGE_KEY,
 } from "@/lib/uiFontSize.js";
 import {
+  applyCodeFontFamily,
+  applyUiFontFamily,
+  CODE_FONT_FAMILY_STORAGE_KEY,
+  loadActiveThemePluginKey,
+  loadFontFamilyPreference,
+  normalizeFontFamilyInput,
+  persistActiveThemePluginKey,
+  persistFontFamily,
+  UI_FONT_FAMILY_STORAGE_KEY,
+} from "@/lib/themePlugin.js";
+import {
   isTaskNotificationEnabled,
   isTaskNotificationSoundPreferenceEnabled,
   persistTaskNotificationEnabled,
@@ -119,6 +130,16 @@ export interface ZCodeState {
   /** UI 根 rem 字号（px） */
   uiFontSizePx: number;
   setUiFontSizePx: (fontSizePx: number) => void;
+
+  /** 当前生效的主题插件主题 key（`${pluginId}/${themeId}`）；null 表示未启用。 */
+  activeThemePluginKey: string | null;
+  setActiveThemePluginKey: (key: string | null) => void;
+  /** 界面字体族；空字符串表示跟随默认字体栈。 */
+  uiFontFamily: string;
+  setUiFontFamily: (family: string) => void;
+  /** 代码字体族；空字符串表示跟随默认等宽字体栈。 */
+  codeFontFamily: string;
+  setCodeFontFamily: (family: string) => void;
 
   /** 是否启用性能模式 */
   performanceMode: boolean;
@@ -211,9 +232,24 @@ export interface ZCodeState {
 // 需要广播的字段 —— 只有这些字段的变更会发送给其他窗口
 // ============================================================================
 
-const BROADCAST_FIELDS = new Set(["theme", "locale", "uiFontSizePx", "interfaceMode"]);
+const BROADCAST_FIELDS = new Set([
+  "theme",
+  "locale",
+  "uiFontSizePx",
+  "interfaceMode",
+  "activeThemePluginKey",
+  "uiFontFamily",
+  "codeFontFamily",
+]);
 
-type BroadcastField = "theme" | "locale" | "uiFontSizePx" | "interfaceMode";
+type BroadcastField =
+  | "theme"
+  | "locale"
+  | "uiFontSizePx"
+  | "interfaceMode"
+  | "activeThemePluginKey"
+  | "uiFontFamily"
+  | "codeFontFamily";
 
 /** 广播频道名前缀 */
 const STATE_CHANNEL_PREFIX = "state:";
@@ -291,6 +327,28 @@ export function createZCodeStore(
       writeSafeLocalStorage(UI_FONT_SIZE_STORAGE_KEY, String(normalizedFontSizePx));
       applyUiFontSizePx(normalizedFontSizePx);
       set({ uiFontSizePx: normalizedFontSizePx });
+    },
+
+    activeThemePluginKey: loadActiveThemePluginKey(),
+    setActiveThemePluginKey: (key) => {
+      const normalizedKey = typeof key === "string" && key.trim().length > 0 ? key.trim() : null;
+      persistActiveThemePluginKey(normalizedKey);
+      // token/CSS 的 DOM 应用由 App 级 useThemePluginApplication effect 重放（需要主题数据）。
+      set({ activeThemePluginKey: normalizedKey });
+    },
+    uiFontFamily: loadFontFamilyPreference(UI_FONT_FAMILY_STORAGE_KEY),
+    setUiFontFamily: (family) => {
+      const normalizedFamily = normalizeFontFamilyInput(family);
+      persistFontFamily(UI_FONT_FAMILY_STORAGE_KEY, normalizedFamily);
+      applyUiFontFamily(normalizedFamily);
+      set({ uiFontFamily: normalizedFamily });
+    },
+    codeFontFamily: loadFontFamilyPreference(CODE_FONT_FAMILY_STORAGE_KEY),
+    setCodeFontFamily: (family) => {
+      const normalizedFamily = normalizeFontFamilyInput(family);
+      persistFontFamily(CODE_FONT_FAMILY_STORAGE_KEY, normalizedFamily);
+      applyCodeFontFamily(normalizedFamily);
+      set({ codeFontFamily: normalizedFamily });
     },
 
     performanceMode: loadPerformanceMode(),
@@ -482,6 +540,14 @@ export function createZCodeStore(
         state.setInterfaceMode(normalizeInterfaceMode(msg.payload));
       } else if (field === "uiFontSizePx" && typeof msg.payload === "number") {
         state.setUiFontSizePx(msg.payload);
+      } else if (field === "activeThemePluginKey") {
+        state.setActiveThemePluginKey(
+          typeof msg.payload === "string" && msg.payload ? msg.payload : null,
+        );
+      } else if (field === "uiFontFamily" && typeof msg.payload === "string") {
+        state.setUiFontFamily(msg.payload);
+      } else if (field === "codeFontFamily" && typeof msg.payload === "string") {
+        state.setCodeFontFamily(msg.payload);
       }
     } finally {
       applyingBroadcast = false;
@@ -491,6 +557,8 @@ export function createZCodeStore(
   syncSystemThemeListener(useStore.getState().theme);
   applyTheme(useStore.getState().theme);
   applyUiFontSizePx(useStore.getState().uiFontSizePx);
+  applyUiFontFamily(useStore.getState().uiFontFamily);
+  applyCodeFontFamily(useStore.getState().codeFontFamily);
   document.documentElement.classList.toggle(
     "dark",
     resolveTheme(useStore.getState().theme) === "dark",
