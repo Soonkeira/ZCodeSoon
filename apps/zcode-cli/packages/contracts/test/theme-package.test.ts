@@ -88,3 +88,34 @@ test("parsePluginThemeFile merges token problems from both modes", () => {
   assert.match(result.ok ? "" : result.reason, /--color-brand/);
   assert.match(result.ok ? "" : result.reason, /--color-x/);
 });
+
+test("multi-byte css over the byte limit is rejected", () => {
+  const css = "主".repeat(90_000); // UTF-16 length 90000 < 256KiB，UTF-8 字节 270000 > 256KiB
+  assert.equal(scanThemeCssSafety(css).ok, false);
+});
+
+test("light-only theme keeps dark tokens empty", () => {
+  const result = parsePluginThemeFile({
+    id: "light-only",
+    name: "Light Only",
+    tokens: { light: { "--color-brand": "#111111" } },
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.ok ? result.theme.tokensDark : null, {});
+});
+
+test("unknown top-level key is rejected by strict schema", () => {
+  assert.equal(pluginThemeFileSchema.safeParse({ ...validThemeFile, unknownKey: true }).success, false);
+});
+
+test("oversized token key is rejected without unbounded reason", () => {
+  const result = parsePluginThemeFile({
+    id: "huge-key",
+    name: "Huge Key",
+    tokens: { light: { [`--color-${"k".repeat(100_000)}`]: "#111111" } },
+  });
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.ok(result.reason.length <= 512, `reason too long: ${result.reason.length}`);
+  }
+});

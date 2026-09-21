@@ -1,18 +1,31 @@
 import { z } from "zod";
 
 /** 主题 id：小写字母/数字开头，允许 . _ -，总长 ≤ 64（spec §3.2）。 */
-export const PLUGIN_THEME_ID_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const PLUGIN_THEME_ID_MAX_LENGTH = 64;
+export const PLUGIN_THEME_ID_PATTERN = new RegExp(
+  `^[a-z0-9][a-z0-9._-]{0,${PLUGIN_THEME_ID_MAX_LENGTH - 1}}$`,
+);
 
 /** token 白名单：仅 --color-* / --radius-*；字号与字体族归用户设置管辖（spec §3.3）。 */
 const THEME_TOKEN_ALLOWED_PATTERN = /^--(?:color|radius)-[a-z0-9][a-z0-9-]*$/;
-const RESERVED_THEME_TOKEN_KEYS = new Set(["--ui-font-size", "--font-sans", "--font-mono"]);
+const RESERVED_THEME_TOKEN_KEYS = new Set(["--ui-font-size"]);
+const RESERVED_THEME_TOKEN_PREFIX = "--font-";
+
+/** 保留键：精确命中 --ui-font-size，或任意 --font-* 前缀（spec §3.3）。 */
+function isReservedThemeTokenKey(key: string): boolean {
+  return RESERVED_THEME_TOKEN_KEYS.has(key) || key.startsWith(RESERVED_THEME_TOKEN_PREFIX);
+}
 
 const THEME_HEX_COLOR_PATTERN = /^#(?:[\da-fA-F]{3,4}|[\da-fA-F]{6}|[\da-fA-F]{8})$/;
+// 允许一层嵌套括号，覆盖仓库自身在 styles.css 使用的 color-mix(…, var(--color-*) …) 形式。
 const THEME_FUNCTIONAL_COLOR_PATTERN =
-  /^(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color)\([^\n()]*\)$/i;
+  /^(?:rgb|rgba|hsl|hsla|hwb|lab|lch|oklab|oklch|color|color-mix|var)\((?:[^()\n]|\([^()\n]*\))*\)$/i;
 const THEME_COLOR_KEYWORDS = new Set(["transparent", "currentcolor", "inherit", "initial"]);
 const THEME_GEOMETRY_PATTERN = /^-?(?:\d+|\d*\.\d+)(?:px|rem)$/;
+const MAX_THEME_TOKEN_KEY_LENGTH = 64;
 const MAX_THEME_TOKEN_VALUE_LENGTH = 128;
+const MAX_REPORTED_THEME_PROBLEMS = 8;
+const MAX_THEME_REASON_LENGTH = 512;
 
 export function isValidThemeColorValue(value: string): boolean {
   const trimmed = value.trim();
@@ -31,14 +44,14 @@ export function isValidThemeGeometryValue(value: string): boolean {
 
 /** 单条 token 校验；返回 null 表示合法。 */
 export function findThemeTokenProblem(key: string, value: string): string | null {
-  if (RESERVED_THEME_TOKEN_KEYS.has(key)) {
+  if (isReservedThemeTokenKey(key)) {
     return `theme token "${key}" is reserved for user settings and cannot be overridden`;
   }
   if (!THEME_TOKEN_ALLOWED_PATTERN.test(key)) {
     return `theme token "${key}" is outside the --color-* / --radius-* whitelist`;
   }
   if (key.startsWith("--color-") && !isValidThemeColorValue(value)) {
-    return `theme token "${key}" has an unsupported color value: ${value}`;
+    return `theme token "${key}" has an unsupported color value (expected #hex, rgb()/hsl()/oklch()/color-mix()/var(...) or a color keyword): ${value}`;
   }
   if (key.startsWith("--radius-") && !isValidThemeGeometryValue(value)) {
     return `theme token "${key}" must use px or rem units: ${value}`;
@@ -64,14 +77,24 @@ export const pluginThemeFontSuggestionSchema = z
   })
   .strict();
 
+const themeTokenRecordSchema = z.record(
+  z.string().max(MAX_THEME_TOKEN_KEY_LENGTH),
+  z.string().max(MAX_THEME_TOKEN_VALUE_LENGTH),
+);
+
 export const pluginThemeFileSchema = z
   .object({
-    id: z.string().regex(PLUGIN_THEME_ID_PATTERN),
+    id: z
+      .string()
+      .regex(
+        PLUGIN_THEME_ID_PATTERN,
+        `theme id must start with a lowercase letter or digit and contain only a-z0-9._- (max ${PLUGIN_THEME_ID_MAX_LENGTH} chars)`,
+      ),
     name: z.string().trim().min(1).max(64),
     tokens: z
       .object({
-        light: z.record(z.string(), z.string()).optional(),
-        dark: z.record(z.string(), z.string()).optional(),
+        light: themeTokenRecordSchema.optional(),
+        dark: themeTokenRecordSchema.optional(),
       })
       .strict(),
     suggestedFonts: pluginThemeFontSuggestionSchema.optional(),
@@ -99,14 +122,25 @@ export function parsePluginThemeFile(
   if (!parsed.success) {
     const issue = parsed.error.issues[0];
     const prefix = issue && issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
-    return { ok: false, reason: `${prefix}${issue?.message ?? "invalid theme.json"}` };
+    // zod 会把 record key 拼进 issue.path，超长键会让 reason 失控，这里统一封顶
+    const reason = `${prefix}${issue?.message ?? "invalid theme.json"}`;
+    return {
+      ok: false,
+      reason:
+        reason.length > MAX_THEME_REASON_LENGTH
+          ? `${reason.slice(0, MAX_THEME_REASON_LENGTH - 1)}…`
+          : reason,
+    };
   }
   const data = parsed.data;
   const tokensLight = data.tokens.light ?? {};
   const tokensDark = data.tokens.dark ?? {};
   const problems = [...findThemeTokenProblems(tokensLight), ...findThemeTokenProblems(tokensDark)];
   if (problems.length > 0) {
-    return { ok: false, reason: problems.join("; ") };
+    // 截断问题列表，防止 reason 经 RPC 直达 UI 时规模失控
+    const reported = problems.slice(0, MAX_REPORTED_THEME_PROBLEMS);
+    const suffix = problems.length > MAX_REPORTED_THEME_PROBLEMS ? "; …" : "";
+    return { ok: false, reason: `${reported.join("; ")}${suffix}` };
   }
   return {
     ok: true,
@@ -126,10 +160,8 @@ const THEME_CSS_BLOCKED_PATTERN =
   /@import\b|@charset\b|\burl\s*\(|\bimage-set\s*\(|javascript\s*:/i;
 const MAX_THEME_CSS_LENGTH = 256 * 1024;
 
-export interface ThemeCssSafetyResult {
-  ok: boolean;
-  reason?: string;
-}
+/** 与 parsePluginThemeFile 对齐的判别联合：ok=false 时必带 reason。 */
+export type ThemeCssSafetyResult = { ok: true } | { ok: false; reason: string };
 
 export function scanThemeCssSafety(cssText: string): ThemeCssSafetyResult {
   // 上限按 UTF-8 字节计量，与 spec §3.4「256 KiB」及 reason 文案一致
