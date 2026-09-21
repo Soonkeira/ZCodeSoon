@@ -52,6 +52,32 @@ test("invalid color value is rejected", () => {
   assert.equal(result.ok, false);
 });
 
+test("color-mix and var token values are accepted for --color-*", () => {
+  const result = parsePluginThemeFile({
+    ...validThemeFile,
+    tokens: {
+      light: {
+        "--color-sky": "color-mix(in oklab, var(--color-sky-500) 32%, transparent)",
+        "--color-brand": "var(--color-brand)",
+      },
+    },
+  });
+  assert.equal(result.ok, true);
+});
+
+test("functional color values nested deeper than one level are rejected", () => {
+  for (const value of [
+    "var(--a, var(--b, var(--c)))",
+    "color-mix(in oklab, var(--a, var(--b)), transparent)",
+  ]) {
+    const result = parsePluginThemeFile({
+      ...validThemeFile,
+      tokens: { light: { "--color-brand": value } },
+    });
+    assert.equal(result.ok, false, `expected rejection: ${value}`);
+  }
+});
+
 test("radius without px/rem unit is rejected", () => {
   const result = parsePluginThemeFile({
     ...validThemeFile,
