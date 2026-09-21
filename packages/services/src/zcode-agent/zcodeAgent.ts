@@ -24,6 +24,7 @@ import type {
   ZCodeProcessChildProcess,
   ZCodeMcpListResult,
   ZCodePluginsListResult,
+  ZCodePluginsListThemesResult,
   ZCodePluginsOverviewResult,
   ZCodePluginsMarketplaceMutationResult,
   ZCodePluginsInstallResult,
@@ -603,6 +604,7 @@ export interface IZCodeAgentService {
   ): Promise<ZCodeWorkspaceHookTrustGrantResult>;
   listMcpServerStatuses(params: ZCodeAgentListMcpServerStatusesParams): Promise<ZCodeMcpListResult>;
   listPlugins(params: ZCodeAgentPluginViewParams): Promise<ZCodePluginsListResult>;
+  listThemes(params: ZCodeAgentPluginViewParams): Promise<ZCodePluginsListThemesResult>;
   /**
    * Plugin 对话引用 catalog：session-scoped 只读投影。
    * 走 workspace 级 agent client（session 记录只存在于该进程），不走独立插件管理进程。

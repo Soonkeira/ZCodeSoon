@@ -37,6 +37,7 @@ import {
   zcodePluginsConfigureResultSchema,
   zcodePluginsInstallResultSchema,
   zcodePluginsListResultSchema,
+  zcodePluginsListThemesResultSchema,
   zcodePluginsMarketplaceMutationResultSchema,
   zcodePluginsOverviewResultSchema,
   zcodeProcessChildProcessesResultSchema,
@@ -3893,6 +3894,18 @@ export function createZCodeAgentService(
         // 这里对幂等的列表请求重试一次，让设置页可从重新拉起的 app-server 自动恢复。
         return await requestPluginsList();
       }
+    },
+
+    async listThemes(params: ZCodeAgentPluginViewParams) {
+      const client = await getPluginManagementClient();
+      return client.request(
+        zcodeProtocolMethods.pluginsListThemes,
+        {
+          workspace: buildWorkspaceRef(params),
+          ...(params.configScope ? { configScope: params.configScope } : {}),
+        },
+        zcodePluginsListThemesResultSchema,
+      );
     },
 
     async getPluginReferenceCatalog(params: ZCodeAgentPluginReferenceCatalogParams) {

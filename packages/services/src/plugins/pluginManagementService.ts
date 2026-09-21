@@ -9,6 +9,7 @@ interface PluginManagementServiceDependencies {
   zcodeAgentService: Pick<
     IZCodeAgentService,
     | "listPlugins"
+    | "listThemes"
     | "getPluginReferenceCatalog"
     | "resolveSuggestedPluginReference"
     | "onDynamicPluginOperationProgress"
@@ -35,6 +36,7 @@ export function createPluginManagementService(
   const agent = dependencies.zcodeAgentService;
   return {
     listPlugins: (params) => agent.listPlugins(params),
+    listThemes: (params) => agent.listThemes(params),
     getPluginReferenceCatalog: (params) => agent.getPluginReferenceCatalog(params),
     resolveSuggestedPluginReference: (params) => agent.resolveSuggestedPluginReference(params),
     onDynamicPluginOperationProgress: (operationId) =>

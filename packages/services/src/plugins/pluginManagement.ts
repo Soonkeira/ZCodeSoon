@@ -15,6 +15,7 @@ import type {
   ZCodePluginsDescribeResult,
   ZCodePluginsInstallResult,
   ZCodePluginsListResult,
+  ZCodePluginsListThemesResult,
   ZCodePluginsMarketplaceMutationResult,
   ZCodePluginsOverviewResult,
   ZCodePluginsReferenceCatalogResult,
@@ -46,6 +47,7 @@ import type {
 
 export interface IPluginManagementService {
   listPlugins(params: ZCodeAgentPluginViewParams): Promise<ZCodePluginsListResult>;
+  listThemes(params: ZCodeAgentPluginViewParams): Promise<ZCodePluginsListThemesResult>;
   /**
    * Plugin 对话引用 catalog：
    * 带 sessionId → session-owned 冻结 catalog；不带 → workspace 当前 catalog。
