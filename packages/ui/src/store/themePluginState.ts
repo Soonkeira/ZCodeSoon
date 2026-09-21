@@ -47,6 +47,11 @@ export interface ThemePluginStateSlice {
    */
   themePlugins: ZCodeThemePackage[];
   themePluginsStatus: ThemePluginsStatus;
+  /**
+   * 已就绪清单对应的请求 key（spec §4.4）：成功时写入 requestKey，loading/失败为 null。
+   * App 应用点用它识别「当前清单可能来自旧快照」，避免跨窗口/跨主机误判主题已卸载。
+   */
+  themePluginsLoadedKey: string | null;
   loadThemePlugins: (params: LoadThemePluginsParams) => Promise<void>;
 }
 
@@ -70,9 +75,10 @@ let themePluginsRequestId = 0;
  * normalize → persist → apply → set（activeThemePluginKey 仅 persist + set）。
  */
 export function createThemePluginState(writeState: ThemePluginStateWriter): ThemePluginStateSlice {
-  // 去重判定所需的「最近一次成功的请求 key + 当前状态」只属于本切片，闭包持有即可，
-  // 不再去外面读一份 store 副本（第二状态源）。
+  // 去重判定所需的「最近一次成功的请求 key + 正在加载的请求 key + 当前状态」只属于本切片，
+  // 闭包持有即可，不再去外面读一份 store 副本（第二状态源）。
   let loadedKey: string | null = null;
+  let loadingKey: string | null = null;
   let status: ThemePluginsStatus = "idle";
 
   return {
@@ -99,6 +105,7 @@ export function createThemePluginState(writeState: ThemePluginStateWriter): Them
     },
     themePlugins: [],
     themePluginsStatus: "idle",
+    themePluginsLoadedKey: null,
     loadThemePlugins: async ({
       service,
       workspacePath,
@@ -110,14 +117,19 @@ export function createThemePluginState(writeState: ThemePluginStateWriter): Them
       const normalizedIdentity = workspaceIdentity?.trim() || undefined;
       // 身份 key 统一按 Workspace Identity 规范：优先 identity，路径只作本地 fallback。
       const requestKey = `${normalizedIdentity || workspacePath}|${configScope ?? ""}`;
-      if (!force && (status === "loading" || (status === "ready" && loadedKey === requestKey))) {
-        return;
+      // spec §4.4：loading 只对「请求 key 相同」去重；加载中切换 workspace/identity 必须发起新请求，
+      // 否则新来源的清单永远不会加载（旧响应仍由 requestId 丢弃）。
+      if (!force) {
+        if (status === "loading" && loadingKey === requestKey) return;
+        if (status === "ready" && loadedKey === requestKey) return;
       }
       themePluginsRequestId += 1;
       const requestId = themePluginsRequestId;
       status = "loading";
-      // 切换 workspace 或插件集合时先清空旧清单，避免用上一个来源的主题短暂匹配 key。
-      writeState({ themePlugins: [], themePluginsStatus: "loading" });
+      loadingKey = requestKey;
+      // 切换 workspace 或插件集合时先清空旧清单与 loadedKey，
+      // 避免用上一个来源的主题短暂匹配 key（应用点据此识别清单来源）。
+      writeState({ themePlugins: [], themePluginsStatus: "loading", themePluginsLoadedKey: null });
       try {
         const result = await service.listThemes({
           workspacePath,
@@ -128,14 +140,20 @@ export function createThemePluginState(writeState: ThemePluginStateWriter): Them
         if (requestId !== themePluginsRequestId) return;
         status = "ready";
         loadedKey = requestKey;
-        writeState({ themePlugins: result.themes, themePluginsStatus: "ready" });
+        loadingKey = null;
+        writeState({
+          themePlugins: result.themes,
+          themePluginsStatus: "ready",
+          themePluginsLoadedKey: requestKey,
+        });
       } catch (error) {
         if (requestId !== themePluginsRequestId) return;
         // spec §4.2 第 4 步：加载失败只有 error 状态，不清空用户选择；
         // loadedKey 不更新，保证下次 effect 重跑仍会真正重试。
         status = "error";
         loadedKey = null;
-        writeState({ themePlugins: [], themePluginsStatus: "error" });
+        loadingKey = null;
+        writeState({ themePlugins: [], themePluginsStatus: "error", themePluginsLoadedKey: null });
         logger.warn("[theme-plugin] 主题清单加载失败", {
           workspacePath,
           configScope: configScope ?? null,

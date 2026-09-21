@@ -105,11 +105,17 @@ function truncateCssRejectReason(reason: string): string {
 export function useThemePluginApplication(): void {
   const activeThemePluginKey = useZCodeStore((state) => state.activeThemePluginKey);
   const setActiveThemePluginKey = useZCodeStore((state) => state.setActiveThemePluginKey);
+  const themePluginsLoadedKey = useZCodeStore((state) => state.themePluginsLoadedKey);
   const theme = useZCodeStore((state) => state.theme);
   const activeWorkspacePath = useTabStore((state) => state.activeWorkspacePath);
-  const { themes, status } = useThemePlugins(activeWorkspacePath);
+  const { themes, status, refresh } = useThemePlugins(activeWorkspacePath);
   const resolvedMode = useResolvedThemeMode(theme);
   const { intl } = useZCodeIntl();
+  // spec §4.4 防跨窗口/跨主机误清：其它窗口（或远端 Host）刚安装主题并广播 key 时，
+  // 本窗口清单可能还是安装前的旧快照，「ready 但 find 失败」不能直接判定为已卸载。
+  // 首次进入该分支先按 `${activeThemePluginKey}|${themePluginsLoadedKey}` 签名强制校验一次且不清理；
+  // 校验刷新完成后仍找不到才走回退。签名包含 loadedKey，清单变化后才允许再校验一次（避免循环）。
+  const staleCatalogVerifyRef = useRef<string | null>(null);
   // spec §6：CSS 被安全校验拒绝时仅丢弃样式、token 仍生效，静默处理会让用户误以为主题损坏。
   // 该 effect 会因明暗重放、列表刷新与重渲染反复执行，用「主题 key + 原因」签名去重：
   // 只有切换到别的被拒主题或原因变化（如插件更新）才再次提示。
@@ -127,7 +133,14 @@ export function useThemePluginApplication(): void {
     const entry = themes.find((candidate) => themeEntryKey(candidate) === activeThemePluginKey);
     if (!entry) {
       if (status === "ready") {
-        // spec §4.2 第 1 步：主题列表就绪仍找不到主题（插件被卸载/停用）→ 回退默认外观并清空 store 字段。
+        const verificationSignature = `${activeThemePluginKey}|${themePluginsLoadedKey ?? ""}`;
+        if (staleCatalogVerifyRef.current !== verificationSignature) {
+          // 先验证再回退：本轮只强制刷新清单，不清 DOM、不清 key；校验结果回来后 effect 重跑。
+          staleCatalogVerifyRef.current = verificationSignature;
+          refresh();
+          return;
+        }
+        // spec §4.2 第 1 步：强制刷新后的清单仍找不到主题（插件被卸载/停用）→ 回退默认外观并清空 store 字段。
         applyPluginThemeTokens({});
         applyPluginThemeCss(null);
         setActiveThemePluginKey(null);
@@ -176,5 +189,14 @@ export function useThemePluginApplication(): void {
         );
       }
     }
-  }, [activeThemePluginKey, themes, status, resolvedMode, setActiveThemePluginKey, intl]);
+  }, [
+    activeThemePluginKey,
+    themes,
+    status,
+    themePluginsLoadedKey,
+    refresh,
+    resolvedMode,
+    setActiveThemePluginKey,
+    intl,
+  ]);
 }

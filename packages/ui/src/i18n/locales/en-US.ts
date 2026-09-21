@@ -1812,6 +1812,7 @@ const enUS: Record<string, string> = {
     'The theme "{name}" custom styles failed the safety check and were skipped; only its colors are applied. {reason}',
   "settings.themePlugin.invalidActive":
     'The theme "{name}" is no longer valid, so the default look is used for now: {reason}',
+  "settings.themePlugin.loadFailed": "Failed to load theme packs. Try again later.",
   "settings.uiFontFamily": "UI font",
   "settings.uiFontFamilyDescription":
     "Choose the font family for interface text. Leave empty to follow the default stack.",

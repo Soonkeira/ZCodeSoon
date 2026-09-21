@@ -1707,6 +1707,7 @@ const zhCN: Record<string, string> = {
   "settings.themePlugin.cssRejected":
     "主题「{name}」的附加样式未通过安全校验，已仅应用配色。{reason}",
   "settings.themePlugin.invalidActive": "主题「{name}」已失效，暂用默认外观：{reason}",
+  "settings.themePlugin.loadFailed": "主题列表加载失败，请稍后重试。",
   "settings.uiFontFamily": "界面字体",
   "settings.uiFontFamilyDescription": "选择界面文字使用的字体族，留空跟随默认字体栈。",
   "settings.codeFontFamily": "代码字体",

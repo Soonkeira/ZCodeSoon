@@ -10,6 +10,7 @@ import {
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import { resolveDeclaredThemeMode, themeEntryKey } from "@/lib/themePlugin.js";
 import { SettingsRow } from "@/settings/SettingsPageParts.js";
+import { useZCodeStore } from "@/store/StoreProvider.js";
 
 // Radix Select 的 SelectItem 不允许空字符串 value（会抛错），「不使用」用哨兵值映射为 null。
 const NONE_THEME_SENTINEL = "__none__";
@@ -37,6 +38,8 @@ export function ThemePluginSelect({
   setCodeFontFamily: (family: string) => void;
 }) {
   const { intl } = useZCodeIntl();
+  // 清单加载失败时空态提示（spec §4.4）；status 直接从 store 读，避免父组件再透传一个 prop。
+  const themePluginsStatus = useZCodeStore((state) => state.themePluginsStatus);
   const activeThemeEntry = themePlugins.find((candidate) => themeEntryKey(candidate) === value);
   // spec §4.3：只声明一组 token 的主题，另一模式沿用内置配色，这里标注主题实际覆盖的模式。
   const partialMode =
@@ -89,6 +92,11 @@ export function ThemePluginSelect({
           </Select>
         }
       />
+      {themePluginsStatus === "error" ? (
+        <div className="px-4 pb-2 text-ui-sm text-foreground-subtle">
+          {intl.formatMessage({ id: "settings.themePlugin.loadFailed" })}
+        </div>
+      ) : null}
       {partialMode ? (
         <div className="px-4 pb-2 text-ui-sm text-foreground-subtle">
           {intl.formatMessage(

@@ -192,7 +192,11 @@ test("loadThemePlugins loads the catalog once and records ready", async () => {
     // 空白 identity 只按 workspacePath 构造请求 key，也不把空串下推给服务。
     workspaceIdentity: "   ",
   });
-  assert.deepEqual(patches[0], { themePlugins: [], themePluginsStatus: "loading" });
+  assert.deepEqual(patches[0], {
+    themePlugins: [],
+    themePluginsStatus: "loading",
+    themePluginsLoadedKey: null,
+  });
   assert.deepEqual(calls[0], { workspacePath: "/ws/a" });
 
   pending[0]!.resolve({ themes });
@@ -200,6 +204,7 @@ test("loadThemePlugins loads the catalog once and records ready", async () => {
 
   assert.deepEqual(current().themePlugins, themes);
   assert.equal(current().themePluginsStatus, "ready");
+  assert.equal(current().themePluginsLoadedKey, "/ws/a|");
 });
 
 test("loadThemePlugins dedupes the same request key unless forced", async () => {
@@ -281,4 +286,63 @@ test("loadThemePlugins records error without throwing when the request fails", a
   await assert.doesNotReject(() => state.loadThemePlugins({ service, workspacePath: "/ws/a" }));
   assert.equal(current().themePluginsStatus, "error");
   assert.deepEqual(current().themePlugins, []);
+});
+
+test("loadThemePlugins starts a new request for a different key while loading and drops the stale response", async () => {
+  const staleTheme = themePackage("stale@inline", "dark");
+  const freshTheme = themePackage("fresh@inline", "dark");
+  const { calls, pending, service } = createQueuedThemeService();
+  const { state, current } = createCatalogHarness();
+
+  const stale = state.loadThemePlugins({ service, workspacePath: "/ws/a" });
+  assert.equal(calls.length, 1);
+  assert.equal(current().themePluginsLoadedKey, null);
+
+  // 旧请求仍挂起时切换 workspace：不同 key 不能被 loading 去重拦下，否则新来源永远不加载。
+  const fresh = state.loadThemePlugins({ service, workspacePath: "/ws/b" });
+  assert.equal(calls.length, 2);
+
+  pending[1]!.resolve({ themes: [freshTheme] });
+  await fresh;
+  assert.deepEqual(current().themePlugins, [freshTheme]);
+  assert.equal(current().themePluginsLoadedKey, "/ws/b|");
+
+  // 旧响应回包时必须被丢弃，不能覆盖后发请求的清单与 loadedKey。
+  pending[0]!.resolve({ themes: [staleTheme] });
+  await stale;
+  assert.deepEqual(current().themePlugins, [freshTheme]);
+  assert.equal(current().themePluginsLoadedKey, "/ws/b|");
+});
+
+test("loadThemePlugins exposes the ready request key and clears it on loading or failure", async () => {
+  const { pending, service } = createQueuedThemeService();
+  const { state, current } = createCatalogHarness();
+
+  const loading = state.loadThemePlugins({
+    service,
+    workspacePath: "/ws/a",
+    workspaceIdentity: "remote://host-a",
+  });
+  assert.equal(current().themePluginsLoadedKey, null);
+  pending[0]!.resolve({ themes: [themePackage("acme-theme@inline", "dark")] });
+  await loading;
+  assert.equal(current().themePluginsLoadedKey, "remote://host-a|");
+
+  // 新一轮加载（不同 key）开始时先清空 loadedKey，应用点据此识别清单正在切换。
+  const next = state.loadThemePlugins({ service, workspacePath: "/ws/b" });
+  assert.equal(current().themePluginsLoadedKey, null);
+  pending[1]!.resolve({ themes: [] });
+  await next;
+  assert.equal(current().themePluginsLoadedKey, "/ws/b|");
+
+  // 失败时 loadedKey 归 null，保证下次 effect 重跑仍会真正重试。
+  const failing = {
+    listThemes: () => Promise.reject(new Error("boom")),
+  } as unknown as ThemeService;
+  await state.loadThemePlugins({
+    service: failing,
+    workspacePath: "/ws/a",
+    workspaceIdentity: "remote://host-b",
+  });
+  assert.equal(current().themePluginsLoadedKey, null);
 });

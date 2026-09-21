@@ -148,11 +148,18 @@ ZCode 现有外观能力：内置 5 种主题值（`light` / `dark` / `zai-light
 ```
 
 - 请求 key = `${workspaceIdentity?.trim() || workspacePath}|${configScope ?? ""}`；非 force 时：
-  正在 loading，或已 ready 且 key 未变 → 直接返回（去重）。
+  正在 loading 且请求 key 相同，或已 ready 且 key 未变 → 直接返回（去重）。loading 中换了 key
+  （如切换 workspace/identity）允许发起新请求，否则新来源的清单永远不会加载；旧响应仍由 requestId 丢弃。
 - 过期响应丢弃：请求发起时递增模块级 requestId，响应返回时不匹配即忽略（回收 stale agent 期间的挂起请求
   不能覆盖后发请求的结果）。
-- loading 立即清空清单，避免用上一个 workspace/插件集合的主题短暂匹配 key。
-- 请求失败 → `status="error"` 并清空清单；此时 App 既不应用也不清空用户选择（§4.2 第 4 步）。
+- loading 立即清空清单并把 `themePluginsLoadedKey` 置 null，避免用上一个 workspace/插件集合的主题短暂匹配 key。
+- 成功时 `status="ready"` 且 `themePluginsLoadedKey=requestKey`（当前清单对应的请求 key）；加载中/失败为 null。
+- 请求失败 → `status="error"` 并清空清单（`themePluginsLoadedKey` 置 null）；此时 App 既不应用也不清空用户选择（§4.2 第 4 步）。
+
+跨窗口/跨主机防误清：窗口 A 安装主题后广播 key，窗口 B 的清单可能仍是安装前的旧快照（远端 Host 同理），
+此时应用点「ready 但 `themes.find` 失败」不能直接判定为已卸载。应用点先以
+`${activeThemePluginKey}|${themePluginsLoadedKey}` 为签名做一次 force 校验且不清理；校验刷新完成后
+仍找不到才按 §4.2 第 1 步回退并清空 key。`themePluginsLoadedKey` 变化后允许再校验一次，保证不循环。
 
 ## 5. 设置 UI
 
