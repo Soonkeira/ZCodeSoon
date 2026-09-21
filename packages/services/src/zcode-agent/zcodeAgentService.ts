@@ -3897,15 +3897,36 @@ export function createZCodeAgentService(
     },
 
     async listThemes(params: ZCodeAgentPluginViewParams) {
-      const client = await getPluginManagementClient();
-      return client.request(
-        zcodeProtocolMethods.pluginsListThemes,
-        {
-          workspace: buildWorkspaceRef(params),
-          ...(params.configScope ? { configScope: params.configScope } : {}),
-        },
-        zcodePluginsListThemesResultSchema,
-      );
+      const requestThemesList = async () => {
+        const client = await getPluginManagementClient();
+        // 与 plugins/list 同源：主题清单也只读本地 plugin metadata，必须走默认协议超时，
+        // stale client 才能在合理时间内触发回收并重试，而不是被 5 分钟市场 I/O 超时拖住。
+        return client.request(
+          zcodeProtocolMethods.pluginsListThemes,
+          {
+            workspace: buildWorkspaceRef(params),
+            ...(params.configScope ? { configScope: params.configScope } : {}),
+          },
+          zcodePluginsListThemesResultSchema,
+        );
+      };
+      try {
+        return await requestThemesList();
+      } catch (error) {
+        if (!isProtocolRequestTimeout(error, zcodeProtocolMethods.pluginsListThemes)) {
+          throw error;
+        }
+        logger.warn(undefined, "主题清单请求超时，重启无响应 agent 后重试一次", {
+          workspaceKey: resolveWorkspaceKey(params),
+          workspacePath: params.workspacePath,
+          message: error instanceof Error ? error.message : String(error),
+        });
+        // 主题清单与插件清单读取同一份 enabled plugin metadata，是幂等只读请求。
+        // 旧 agent 进程还活着但协议不回包时，第一次超时后不能继续复用 stale client：
+        // process manager 会在超时时回收该 client，这里重试一次让 App 级主题应用能自动恢复，
+        // 否则共享清单会一直停在旧值（找不到 entry 就回退默认主题）。
+        return await requestThemesList();
+      }
     },
 
     async getPluginReferenceCatalog(params: ZCodeAgentPluginReferenceCatalogParams) {
