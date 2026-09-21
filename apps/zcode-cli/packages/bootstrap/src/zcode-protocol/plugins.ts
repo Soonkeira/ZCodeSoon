@@ -7,6 +7,7 @@ import {
   zcodePluginsMarketplaceUpdateParamsSchema,
   zcodePluginsOverviewParamsSchema,
   zcodePluginsListParamsSchema,
+  zcodePluginsListThemesParamsSchema,
   zcodePluginsSetEnabledParamsSchema,
   zcodePluginsUninstallParamsSchema,
   zcodePluginsUpdateParamsSchema,
@@ -23,12 +24,14 @@ import {
   type ZCodePluginsDescribeResult,
   type ZCodePluginsInstallResult,
   type ZCodePluginsListResult,
+  type ZCodePluginsListThemesResult,
   type ZCodePluginsMarketplaceMutationResult,
   type ZCodePluginsOverviewResult,
   type ZCodePluginsRestoreBuiltinResult,
   type ZCodePluginsSetEnabledResult,
   type ZCodePluginsUninstallResult,
   type ZCodePluginsValidateResult,
+  type ZCodeThemePackage,
 } from "@zcode/shared";
 import type { PluginDiagnostic, PluginMetadata } from "@zcode/contracts";
 import {
@@ -46,7 +49,11 @@ import {
   updateZCodePluginMarketplace,
   validateZCodePlugin,
 } from "../plugins.js";
-import { listInstalledPluginRecords } from "@zcode/adapters/plugins";
+import {
+  collectThemePackages,
+  listInstalledPluginRecords,
+  loadPluginManifestFromRoot,
+} from "@zcode/adapters/plugins";
 import { withPluginStorageLock } from "../lib/plugin-storage-lock.js";
 import { getCliStorageRoot, getPluginStorageRoot } from "../app/paths.js";
 import { resolveOfficialPluginHostMcpServerNames } from "../app/official-plugin-definitions.js";
@@ -224,6 +231,48 @@ export async function listPlugins(
     ],
     diagnostics: outcome.diagnostics.map(toPluginDiagnostic),
   };
+}
+
+// 列出启用插件提供的主题包（spec §3.1：默认 themes/ 目录存在即扫描，不依赖 manifest 声明）。
+export async function listThemes(
+  context: ZCodeProtocolAgentServerContext,
+  rawParams: unknown,
+): Promise<ZCodePluginsListThemesResult> {
+  const params = parseParams(zcodePluginsListThemesParamsSchema, rawParams);
+  const configResult = createPluginConfigView(
+    context,
+    params.workspace.workspacePath,
+    params.configScope,
+  );
+  const outcome = resolveZCodePlugins({
+    configResult,
+    logger: context.logger,
+    workingDirectory: params.workspace.workspacePath,
+  });
+  const themes: ZCodeThemePackage[] = [];
+  for (const plugin of outcome.plugins) {
+    if (!plugin.enabled) continue;
+    // 无 manifest 或未声明 themes 时仍扫描默认 themes/ 目录（spec §3.1：存在即扫描）。
+    const manifest = loadPluginManifestFromRoot(plugin.rootPath);
+    const { packages } = collectThemePackages(plugin.rootPath, manifest?.themes);
+    for (const pkg of packages) {
+      themes.push({
+        pluginId: plugin.id,
+        pluginName: plugin.name,
+        themeId: pkg.themeId,
+        name: pkg.name,
+        valid: pkg.valid,
+        ...(pkg.invalidReason !== undefined ? { invalidReason: pkg.invalidReason } : {}),
+        tokensLight: pkg.tokensLight,
+        tokensDark: pkg.tokensDark,
+        ...(pkg.suggestedFonts !== undefined ? { suggestedFonts: pkg.suggestedFonts } : {}),
+        ...(pkg.cssText !== undefined ? { cssText: pkg.cssText } : {}),
+        cssStatus: pkg.cssStatus,
+        ...(pkg.cssRejectReason !== undefined ? { cssRejectReason: pkg.cssRejectReason } : {}),
+      });
+    }
+  }
+  return { themes, diagnostics: [] };
 }
 
 export async function setPluginEnabled(

@@ -59,6 +59,7 @@ import {
   getPluginsOverview,
   installPlugin,
   listPlugins,
+  listThemes,
   removePluginMarketplace,
   resetPluginConfig,
   restoreBuiltinPlugin,
@@ -645,6 +646,8 @@ export class ZCodeProtocolAgentServer {
         return await listMcpServers(this.context, request.params);
       case zcodeProtocolMethods.pluginsList:
         return await listPlugins(this.context, request.params);
+      case zcodeProtocolMethods.pluginsListThemes:
+        return await listThemes(this.context, request.params);
       case zcodeProtocolMethods.pluginsReferenceCatalogWithCategory:
         return await getPluginReferenceCatalog(this.context, request.params, true);
       case zcodeProtocolMethods.pluginsReferenceCatalog:
