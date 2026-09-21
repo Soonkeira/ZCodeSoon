@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ZCodeThemePackage } from "@zcode/shared";
+import { toast } from "@/components/ui/toast.js";
 import { useBaseWorkspaceServices } from "@/hooks/useWorkspaceServices.js";
+import { useZCodeIntl } from "@/i18n/IntlProvider.js";
 import {
   applyPluginThemeCss,
   applyPluginThemeTokens,
@@ -85,6 +87,15 @@ function useResolvedThemeMode(preference: Theme): "light" | "dark" {
   }, [preference, systemRevision]);
 }
 
+/** CSS 拒绝原因可能很长，toast 只展示截断摘要；完整原因仍由设置页与 listThemes 数据承载。 */
+const MAX_CSS_REJECT_REASON_LENGTH = 120;
+
+function truncateCssRejectReason(reason: string): string {
+  const trimmed = reason.trim();
+  if (trimmed.length <= MAX_CSS_REJECT_REASON_LENGTH) return trimmed;
+  return `${trimmed.slice(0, MAX_CSS_REJECT_REASON_LENGTH)}…`;
+}
+
 /** App 级挂载一次：activeThemePluginKey 的唯一 DOM 应用点（幂等，明暗切换与主题列表变化时重放）。 */
 export function useThemePluginApplication(): void {
   const activeThemePluginKey = useZCodeStore((state) => state.activeThemePluginKey);
@@ -93,6 +104,11 @@ export function useThemePluginApplication(): void {
   const activeWorkspacePath = useTabStore((state) => state.activeWorkspacePath);
   const { themes, status } = useThemePlugins(activeWorkspacePath);
   const resolvedMode = useResolvedThemeMode(theme);
+  const { intl } = useZCodeIntl();
+  // spec §6：CSS 被安全校验拒绝时仅丢弃样式、token 仍生效，静默处理会让用户误以为主题损坏。
+  // 该 effect 会因明暗重放、列表刷新与重渲染反复执行，用「主题 key + 原因」签名去重：
+  // 只有切换到别的被拒主题或原因变化（如插件更新）才再次提示。
+  const cssRejectedNoticeRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!activeThemePluginKey) {
@@ -115,5 +131,22 @@ export function useThemePluginApplication(): void {
     applyPluginThemeCss(
       entry.cssStatus === "ok" && typeof entry.cssText === "string" ? entry.cssText : null,
     );
-  }, [activeThemePluginKey, themes, status, resolvedMode, setActiveThemePluginKey]);
+
+    if (entry.valid && entry.cssStatus === "rejected") {
+      const signature = `${themeEntryKey(entry)}|${entry.cssRejectReason ?? ""}`;
+      if (cssRejectedNoticeRef.current !== signature) {
+        cssRejectedNoticeRef.current = signature;
+        toast(
+          intl.formatMessage(
+            { id: "settings.themePlugin.cssRejected" },
+            {
+              name: entry.name,
+              reason: truncateCssRejectReason(entry.cssRejectReason ?? "") || "—",
+            },
+          ),
+          { variant: "warning" },
+        );
+      }
+    }
+  }, [activeThemePluginKey, themes, status, resolvedMode, setActiveThemePluginKey, intl]);
 }

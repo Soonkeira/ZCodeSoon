@@ -1808,6 +1808,8 @@ const enUS: Record<string, string> = {
     "This theme only overrides the {mode} mode; the other mode keeps built-in colors.",
   "settings.themePlugin.suggestedFonts": "Suggested fonts: {fonts}",
   "settings.themePlugin.applySuggested": "Apply",
+  "settings.themePlugin.cssRejected":
+    'The theme "{name}" custom styles failed the safety check and were skipped; only its colors are applied. {reason}',
   "settings.uiFontFamily": "UI font",
   "settings.uiFontFamilyDescription":
     "Choose the font family for interface text. Leave empty to follow the default stack.",
