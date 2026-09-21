@@ -1623,10 +1623,13 @@ git commit -m "feat(ui): add theme plugin and font family settings selectors"
 
 ### Task 10: 示例主题包 + 主题作者文档
 
+> **路径已作废提示**：本节的 `fixtures/sereno-theme/` 原始路径已被实现取代为 `fixtures/sereno-marketplace/`（目录市场结构：根 `marketplace.json` + `plugins/sereno-theme/`），详见本任务末的"实现落地差异"注记与 Task 11 E2E 路径。
+
 **Files:**
-- Create: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme/.zcode-plugin/plugin.json`
-- Create: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme/themes/sereno-dark/theme.json`
-- Create: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-theme/themes/sereno-dark/overrides.css`
+- Create: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/marketplace.json`
+- Create: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/plugins/sereno-theme/.zcode-plugin/plugin.json`
+- Create: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/plugins/sereno-theme/themes/sereno-dark/theme.json`
+- Create: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/plugins/sereno-theme/themes/sereno-dark/overrides.css`
 - Create: `docs/theme-plugin-authoring.md`
 
 - [ ] **Step 1: 示例主题包**
