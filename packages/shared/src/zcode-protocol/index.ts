@@ -2589,6 +2589,48 @@ export const zcodePluginsListResultSchema = z
   .strict();
 export type ZCodePluginsListResult = z.infer<typeof zcodePluginsListResultSchema>;
 
+export const zcodeThemeFontSuggestionSchema = z
+  .object({
+    ui: z.string().optional(),
+    code: z.string().optional(),
+  })
+  .strict();
+export type ZcodeThemeFontSuggestion = z.infer<typeof zcodeThemeFontSuggestionSchema>;
+
+export const zcodeThemePackageSchema = z
+  .object({
+    pluginId: z.string().min(1),
+    pluginName: z.string().min(1),
+    themeId: z.string().min(1),
+    name: z.string().min(1),
+    valid: z.boolean(),
+    invalidReason: z.string().optional(),
+    tokensLight: z.record(z.string(), z.string()),
+    tokensDark: z.record(z.string(), z.string()),
+    suggestedFonts: zcodeThemeFontSuggestionSchema.optional(),
+    cssText: z.string().optional(),
+    cssStatus: z.enum(["ok", "missing", "rejected"]),
+    cssRejectReason: z.string().optional(),
+  })
+  .strict();
+export type ZcodeThemePackage = z.infer<typeof zcodeThemePackageSchema>;
+
+export const zcodePluginsListThemesParamsSchema = z
+  .object({
+    workspace: zcodeWorkspaceRefSchema,
+    configScope: zcodePluginScopeSchema.optional(),
+  })
+  .strict();
+export type ZcodePluginsListThemesParams = z.infer<typeof zcodePluginsListThemesParamsSchema>;
+
+export const zcodePluginsListThemesResultSchema = z
+  .object({
+    themes: z.array(zcodeThemePackageSchema),
+    diagnostics: z.array(zcodePluginDiagnosticSchema),
+  })
+  .strict();
+export type ZcodePluginsListThemesResult = z.infer<typeof zcodePluginsListThemesResultSchema>;
+
 // ── Plugin 对话引用 catalog──
 // Session-scoped 只读投影：带 sessionId → 该 Session 创建时冻结的身份 catalog；
 // 不带 → workspace 当前 catalog（新建草稿 Picker）。身份与能力字段保持
@@ -3612,6 +3654,7 @@ export const zcodeProtocolMethods = {
   providerTestModelConnectivity: "provider/testModelConnectivity",
   mcpList: "mcp/list",
   pluginsList: "plugins/list",
+  pluginsListThemes: "plugins/listThemes",
   pluginsReferenceCatalog: "plugins/referenceCatalog",
   pluginsReferenceCatalogWithCategory: "plugins/referenceCatalogWithCategory",
   skillsReferenceCatalog: "skills/referenceCatalog",
