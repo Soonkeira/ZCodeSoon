@@ -6,6 +6,7 @@ import {
   buildFontStack,
   normalizeFontFamilyInput,
   pickTokensForMode,
+  resolveDeclaredThemeMode,
   themeEntryKey,
   wrapThemeCss,
 } from "../src/lib/themePlugin.ts";
@@ -28,6 +29,25 @@ test("pickTokensForMode half-covers when one mode is empty", () => {
   assert.deepEqual(pickedLight.tokens, {});
   assert.equal(pickedLight.complete, false);
   assert.deepEqual(pickTokensForMode({}, onlyDark, "dark").tokens, onlyDark);
+});
+
+test("resolveDeclaredThemeMode reports dark for a dark-only theme", () => {
+  assert.equal(resolveDeclaredThemeMode({}, { "--color-brand": "#eeeeee" }), "dark");
+});
+
+test("resolveDeclaredThemeMode reports light for a light-only theme", () => {
+  assert.equal(resolveDeclaredThemeMode({ "--color-brand": "#111111" }, {}), "light");
+});
+
+test("resolveDeclaredThemeMode returns null when both modes are declared", () => {
+  assert.equal(
+    resolveDeclaredThemeMode({ "--color-brand": "#111111" }, { "--color-brand": "#eeeeee" }),
+    null,
+  );
+});
+
+test("resolveDeclaredThemeMode returns null when neither mode is declared", () => {
+  assert.equal(resolveDeclaredThemeMode({}, {}), null);
 });
 
 test("wrapThemeCss scopes css under #root", () => {

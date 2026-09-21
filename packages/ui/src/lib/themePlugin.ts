@@ -32,6 +32,17 @@ export function pickTokensForMode(
   };
 }
 
+/** 返回主题实际声明的唯一模式；两个模式都声明或都未声明时返回 null（用于「仅深色/仅浅色」提示）。 */
+export function resolveDeclaredThemeMode(
+  tokensLight: Record<string, string>,
+  tokensDark: Record<string, string>,
+): ThemeMode | null {
+  const hasLight = Object.keys(tokensLight).length > 0;
+  const hasDark = Object.keys(tokensDark).length > 0;
+  if (hasLight === hasDark) return null;
+  return hasDark ? "dark" : "light";
+}
+
 export function wrapThemeCss(cssText: string): string {
   return `@scope (${THEME_SCOPE_CONTAINER}) {\n${cssText}\n}`;
 }

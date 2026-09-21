@@ -8,11 +8,19 @@ import {
   SelectValue,
 } from "@/components/ui/select.js";
 import { useZCodeIntl } from "@/i18n/IntlProvider.js";
-import { themeEntryKey } from "@/lib/themePlugin.js";
+import { resolveDeclaredThemeMode, themeEntryKey } from "@/lib/themePlugin.js";
 import { SettingsRow } from "@/settings/SettingsPageParts.js";
 
 // Radix Select 的 SelectItem 不允许空字符串 value（会抛错），「不使用」用哨兵值映射为 null。
 const NONE_THEME_SENTINEL = "__none__";
+// invalidReason 上限 512 字符，长原因会撑高弹层；展示侧截断，完整原因放 title。
+const MAX_INVALID_REASON_DISPLAY_LENGTH = 80;
+
+function truncateInvalidReason(reason: string): string {
+  return reason.length > MAX_INVALID_REASON_DISPLAY_LENGTH
+    ? `${reason.slice(0, MAX_INVALID_REASON_DISPLAY_LENGTH)}…`
+    : reason;
+}
 
 /** 主题包选择行与半覆盖/建议字体提示，放在外观设置「界面设置」卡内。 */
 export function ThemePluginSelect({
@@ -30,14 +38,10 @@ export function ThemePluginSelect({
 }) {
   const { intl } = useZCodeIntl();
   const activeThemeEntry = themePlugins.find((candidate) => themeEntryKey(candidate) === value);
-  // spec §4.3：只声明一组 token 的主题在缺失模式沿用内置配色，这里标注被覆盖的模式。
+  // spec §4.3：只声明一组 token 的主题，另一模式沿用内置配色，这里标注主题实际覆盖的模式。
   const partialMode =
     activeThemeEntry?.valid === true
-      ? Object.keys(activeThemeEntry.tokensLight).length === 0
-        ? "light"
-        : Object.keys(activeThemeEntry.tokensDark).length === 0
-          ? "dark"
-          : null
+      ? resolveDeclaredThemeMode(activeThemeEntry.tokensLight, activeThemeEntry.tokensDark)
       : null;
   const suggestedFonts = activeThemeEntry?.valid ? activeThemeEntry.suggestedFonts : undefined;
 
@@ -65,6 +69,7 @@ export function ThemePluginSelect({
                   key={themeEntryKey(entry)}
                   value={themeEntryKey(entry)}
                   disabled={!entry.valid}
+                  title={entry.valid ? undefined : entry.invalidReason}
                 >
                   {entry.valid
                     ? intl.formatMessage(
@@ -73,7 +78,10 @@ export function ThemePluginSelect({
                       )
                     : intl.formatMessage(
                         { id: "settings.themePlugin.invalid" },
-                        { name: entry.name, reason: entry.invalidReason ?? "" },
+                        {
+                          name: entry.name,
+                          reason: truncateInvalidReason(entry.invalidReason ?? ""),
+                        },
                       )}
                 </SelectItem>
               ))}

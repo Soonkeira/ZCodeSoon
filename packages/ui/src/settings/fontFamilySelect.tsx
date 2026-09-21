@@ -33,6 +33,10 @@ const CODE_FONT_OPTIONS = [
 // Radix Select 的 SelectItem 不允许空字符串 value（会抛错），空值用哨兵值映射。
 const DEFAULT_FONT_SENTINEL = "__default__";
 const CUSTOM_FONT_SENTINEL = "__custom__";
+const FONT_OPTIONS_BY_KIND: Record<"ui" | "code", string[]> = {
+  ui: UI_FONT_OPTIONS,
+  code: CODE_FONT_OPTIONS,
+};
 
 export function FontFamilySelect({
   value,
@@ -44,15 +48,14 @@ export function FontFamilySelect({
   kind: "ui" | "code";
 }) {
   const { intl } = useZCodeIntl();
-  const options = kind === "ui" ? UI_FONT_OPTIONS : CODE_FONT_OPTIONS;
+  const options = FONT_OPTIONS_BY_KIND[kind];
   const [isCustom, setIsCustom] = useState(() => value.length > 0 && !options.includes(value));
 
-  // 「一键应用」等外部写入可能把值改成列表外字体；同步回自定义态，避免触发器显示为空。
+  // 外部写入（跨窗口广播、一键应用后清空）也要确定性同步自定义态：
+  // 值非空且不在预设列表 → 展开输入框；值回到空或预设 → 收起（输入框内清空即「默认字体」语义）。
   useEffect(() => {
-    if (value.length === 0) return;
-    const presetOptions = kind === "ui" ? UI_FONT_OPTIONS : CODE_FONT_OPTIONS;
-    setIsCustom(!presetOptions.includes(value));
-  }, [kind, value]);
+    setIsCustom(value.length > 0 && !options.includes(value));
+  }, [options, value]);
 
   return (
     <div className="flex w-[260px] min-w-0 flex-col gap-1">
