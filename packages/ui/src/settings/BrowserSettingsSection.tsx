@@ -25,6 +25,7 @@ import { startUserAction } from "@/lib/userActionTelemetry.js";
 import { SettingsGroupCard, SettingsRow } from "@/settings/SettingsPageParts.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
 import { useSkillStore } from "@/store/skillStore.js";
+import { useZCodeStore } from "@/store/StoreProvider.js";
 import { formatImportSummary } from "./browserImportSummary.js";
 
 const OFFICIAL_BROWSER_USE_PLUGIN_ID = "browser-use@zcode-plugins-official";
@@ -95,6 +96,7 @@ export function BrowserSettingsSection({
   const togglingPluginId = usePluginManagementStore((state) => state.togglingPluginId);
   const initializePlugins = usePluginManagementStore((state) => state.initialize);
   const setPluginEnabled = usePluginManagementStore((state) => state.setEnabled);
+  const loadThemePlugins = useZCodeStore((state) => state.loadThemePlugins);
   const refreshSkills = useSkillStore((state) => state.refresh);
   const skillStoreWorkspacePath = useSkillStore((state) => state.workspacePath);
   const skillStoreWorkspaceIdentity = useSkillStore((state) => state.workspaceIdentity);
@@ -132,8 +134,19 @@ export function BrowserSettingsSection({
     ) {
       await refreshSkills(skillsService, normalizedWorkspaceIdentity ?? undefined);
     }
+    if (!workspacePath) return;
+    // 启停插件后主题清单同源失效（spec §4.4）：共享 store 必须 force 重取，
+    // 与浏览器插件 initialize 使用同一 workspace/identity 与默认（effective）配置层。
+    await loadThemePlugins({
+      service: pluginManagementService,
+      workspacePath,
+      ...(normalizedWorkspaceIdentity ? { workspaceIdentity: normalizedWorkspaceIdentity } : {}),
+      force: true,
+    });
   }, [
+    loadThemePlugins,
     normalizedWorkspaceIdentity,
+    pluginManagementService,
     refreshSkills,
     skillStoreWorkspaceIdentity,
     skillStoreWorkspacePath,

@@ -4,6 +4,9 @@
  * 本文件收拢 activeThemePluginKey / 字体族字段的持久化、DOM 应用与跨窗口广播分发，
  * 避免全局 Store 因新增字段超出 max-lines 约束（对齐 codingPlanQuotaResetState 先例）。
  */
+import type { IPluginManagementService } from "@zcode/services";
+import type { ZCodeThemePackage } from "@zcode/shared";
+import { logger } from "@/logger.js";
 import {
   applyCodeFontFamily,
   applyUiFontFamily,
@@ -16,6 +19,18 @@ import {
   UI_FONT_FAMILY_STORAGE_KEY,
 } from "@/lib/themePlugin.js";
 
+export type ThemePluginsStatus = "idle" | "loading" | "ready" | "error";
+
+export interface LoadThemePluginsParams {
+  service: IPluginManagementService;
+  workspacePath: string;
+  workspaceIdentity?: string;
+  remoteSessionId?: string;
+  configScope?: "user" | "workspace";
+  /** 插件列表变更后强制重取；默认按请求 key 去重（spec §4.4）。 */
+  force?: boolean;
+}
+
 export interface ThemePluginStateSlice {
   /** 当前生效的主题插件主题 key（`${pluginId}/${themeId}`）；null 表示未启用。 */
   activeThemePluginKey: string | null;
@@ -26,6 +41,13 @@ export interface ThemePluginStateSlice {
   /** 代码字体族；空字符串表示跟随默认等宽字体栈。 */
   codeFontFamily: string;
   setCodeFontFamily: (family: string) => void;
+  /**
+   * 已安装主题插件的主题清单（spec §4.4 单一来源）：App 级应用点与设置页选择器
+   * 共享同一份，插件变更后由变更点 force 刷新，见 loadThemePlugins。
+   */
+  themePlugins: ZCodeThemePackage[];
+  themePluginsStatus: ThemePluginsStatus;
+  loadThemePlugins: (params: LoadThemePluginsParams) => Promise<void>;
 }
 
 /** 参与跨窗口广播的主题插件字段；Store 的 BroadcastField 由本元组派生。 */
@@ -38,10 +60,21 @@ export const THEME_PLUGIN_BROADCAST_FIELDS = [
 type ThemePluginStateWriter = (patch: Partial<ThemePluginStateSlice>) => void;
 
 /**
+ * 过期响应丢弃计数器（spec §4.4）：每次发起请求递增，响应回来时不匹配即忽略。
+ * stale agent 回收期间旧请求可能长时间挂起，不能让它覆盖后发请求的清单。
+ */
+let themePluginsRequestId = 0;
+
+/**
  * 主题插件字段的初始值与 setter；写入模式与既有 setUiFontSizePx 一致：
  * normalize → persist → apply → set（activeThemePluginKey 仅 persist + set）。
  */
 export function createThemePluginState(writeState: ThemePluginStateWriter): ThemePluginStateSlice {
+  // 去重判定所需的「最近一次成功的请求 key + 当前状态」只属于本切片，闭包持有即可，
+  // 不再去外面读一份 store 副本（第二状态源）。
+  let loadedKey: string | null = null;
+  let status: ThemePluginsStatus = "idle";
+
   return {
     activeThemePluginKey: loadActiveThemePluginKey(),
     setActiveThemePluginKey: (key) => {
@@ -63,6 +96,52 @@ export function createThemePluginState(writeState: ThemePluginStateWriter): Them
       persistFontFamily(CODE_FONT_FAMILY_STORAGE_KEY, normalizedFamily);
       applyCodeFontFamily(normalizedFamily);
       writeState({ codeFontFamily: normalizedFamily });
+    },
+    themePlugins: [],
+    themePluginsStatus: "idle",
+    loadThemePlugins: async ({
+      service,
+      workspacePath,
+      workspaceIdentity,
+      remoteSessionId,
+      configScope,
+      force,
+    }) => {
+      const normalizedIdentity = workspaceIdentity?.trim() || undefined;
+      // 身份 key 统一按 Workspace Identity 规范：优先 identity，路径只作本地 fallback。
+      const requestKey = `${normalizedIdentity || workspacePath}|${configScope ?? ""}`;
+      if (!force && (status === "loading" || (status === "ready" && loadedKey === requestKey))) {
+        return;
+      }
+      themePluginsRequestId += 1;
+      const requestId = themePluginsRequestId;
+      status = "loading";
+      // 切换 workspace 或插件集合时先清空旧清单，避免用上一个来源的主题短暂匹配 key。
+      writeState({ themePlugins: [], themePluginsStatus: "loading" });
+      try {
+        const result = await service.listThemes({
+          workspacePath,
+          ...(normalizedIdentity ? { workspaceIdentity: normalizedIdentity } : {}),
+          ...(remoteSessionId ? { remoteSessionId } : {}),
+          ...(configScope ? { configScope } : {}),
+        });
+        if (requestId !== themePluginsRequestId) return;
+        status = "ready";
+        loadedKey = requestKey;
+        writeState({ themePlugins: result.themes, themePluginsStatus: "ready" });
+      } catch (error) {
+        if (requestId !== themePluginsRequestId) return;
+        // spec §4.2 第 4 步：加载失败只有 error 状态，不清空用户选择；
+        // loadedKey 不更新，保证下次 effect 重跑仍会真正重试。
+        status = "error";
+        loadedKey = null;
+        writeState({ themePlugins: [], themePluginsStatus: "error" });
+        logger.warn("[theme-plugin] 主题清单加载失败", {
+          workspacePath,
+          configScope: configScope ?? null,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
     },
   };
 }

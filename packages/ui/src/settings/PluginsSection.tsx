@@ -73,6 +73,7 @@ import {
   resolvePluginDisplayName,
 } from "@/settings/pluginStoreListing.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
+import { useZCodeStore } from "@/store/StoreProvider.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { isWorkspaceTab, type WorkspaceTabState } from "@/store/tabStore.js";
 import {
@@ -190,6 +191,7 @@ function PluginList({
   const resetPluginConfig = usePluginManagementStore((state) => state.resetPluginConfig);
   const togglingPluginId = usePluginManagementStore((state) => state.togglingPluginId);
   const operationId = usePluginManagementStore((state) => state.operationId);
+  const loadThemePlugins = useZCodeStore((state) => state.loadThemePlugins);
   const [selectedPluginId, setSelectedPluginId] = useState<string | null>(null);
   const [pluginOptionsDrafts, setPluginOptionsDrafts] = useState<
     Record<string, Record<string, PluginOptionDraftValue>>
@@ -315,7 +317,24 @@ function PluginList({
       configScope,
       pluginService: pluginManagementService,
     });
-  }, [initialize, pluginManagementService, configScope, target, targetServiceResolution.rpcReady]);
+    // 主题清单与插件启用集合同源（spec §4.4）：安装/停用/卸载后必须 force 重取，
+    // 否则 App 级主题应用仍用旧清单 → 找不到 entry → 回退并清空用户选择。
+    await loadThemePlugins({
+      service: pluginManagementService,
+      workspacePath: target.workspacePath,
+      ...(target.workspaceIdentity ? { workspaceIdentity: target.workspaceIdentity } : {}),
+      ...(target.remoteSessionId ? { remoteSessionId: target.remoteSessionId } : {}),
+      configScope,
+      force: true,
+    });
+  }, [
+    initialize,
+    loadThemePlugins,
+    pluginManagementService,
+    configScope,
+    target,
+    targetServiceResolution.rpcReady,
+  ]);
   const handleSetEnabled = useCallback(
     async (pluginId: string, enabled: boolean) => {
       const plugin = plugins.find((candidate) => candidate.id === pluginId);

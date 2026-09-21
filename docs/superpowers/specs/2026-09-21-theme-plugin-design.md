@@ -136,6 +136,24 @@ ZCode 现有外观能力：内置 5 种主题值（`light` / `dark` / `zai-light
 - 主题包应同时声明 `tokens.light` 与 `tokens.dark`。
 - 只声明一组的主题在选择器中标注「仅深色/仅浅色」，缺失模式回退内置对应模式的值（半覆盖，不报错）。
 
+### 4.4 主题清单的单一来源与插件变更刷新（实现补充）
+
+主题清单同样是「唯一所有者」：清单必须由 UI store 的 `themePlugins` 承载，App 级应用点与设置页选择器只读同一份，
+不允许各自 fetch（否则安装/卸载插件后两边清单分叉，见 §4.2 第 1 步的回退条件）。
+
+```text
+插件列表变更（安装/停用/卸载/更新/手动刷新/远端同步）
+        └─ force:true → store.loadThemePlugins（唯一写入路径）
+                              └─ themePlugins/status 更新 → App effect 重放 → 应用或回退
+```
+
+- 请求 key = `${workspaceIdentity?.trim() || workspacePath}|${configScope ?? ""}`；非 force 时：
+  正在 loading，或已 ready 且 key 未变 → 直接返回（去重）。
+- 过期响应丢弃：请求发起时递增模块级 requestId，响应返回时不匹配即忽略（回收 stale agent 期间的挂起请求
+  不能覆盖后发请求的结果）。
+- loading 立即清空清单，避免用上一个 workspace/插件集合的主题短暂匹配 key。
+- 请求失败 → `status="error"` 并清空清单；此时 App 既不应用也不清空用户选择（§4.2 第 4 步）。
+
 ## 5. 设置 UI
 
 位置：设置页「外观」卡片（`packages/ui/src/settingsCodePreview.tsx` 分区结构）新增：

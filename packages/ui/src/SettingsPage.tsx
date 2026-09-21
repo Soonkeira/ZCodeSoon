@@ -627,7 +627,9 @@ export function SettingsPage({
     setActiveSettingsSection("usage");
   }, [setActiveSettingsSection]);
   const activeWorkspacePath = useTabStore((state) => state.activeWorkspacePath);
-  const { themes: themePlugins } = useThemePlugins(activeWorkspacePath);
+  // 打开设置页时强制重取一次主题清单：插件可能在 App 已加载清单之后安装/启停，
+  // 设置页与 App 共享 store 后才不会出现「设置页能选、App 找不到 entry」的分叉（spec §4.4）。
+  const { themes: themePlugins } = useThemePlugins(activeWorkspacePath, { refreshOnMount: true });
   const tabs = useTabStore((state) => state.tabs);
   const workspaceTabs = useMemo(() => tabs.filter(isWorkspaceTab), [tabs]);
   // Settings 打开后 activeTab 会变成 settings，本地反查 activeTab 读 identity 会稳定丢失。

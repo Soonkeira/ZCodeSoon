@@ -10,48 +10,53 @@ import {
   themeEntryKey,
 } from "@/lib/themePlugin.js";
 import { useZCodeStore } from "@/store/StoreProvider.js";
+import type { ThemePluginsStatus } from "@/store/themePluginState.js";
 import { useTabStore } from "@/store/TabStoreProvider.js";
 import { resolveTheme, type Theme } from "@/useTheme.js";
 
-export type ThemePluginsStatus = "idle" | "loading" | "ready" | "error";
-
-export function useThemePlugins(workspacePath: string | null | undefined): {
+/**
+ * 主题清单的只读消费口（spec §4.4 单一来源）：清单/状态都在主 store，App 与设置页共享，
+ * 本 hook 只负责「什么时候发起加载」并暴露 refresh，不再自己持有 useState 副本。
+ */
+export function useThemePlugins(
+  workspacePath: string | null | undefined,
+  options?: { refreshOnMount?: boolean },
+): {
   themes: ZCodeThemePackage[];
   status: ThemePluginsStatus;
   refresh: () => void;
 } {
   const services = useBaseWorkspaceServices();
-  const [themes, setThemes] = useState<ZCodeThemePackage[]>([]);
-  const [status, setStatus] = useState<ThemePluginsStatus>("idle");
-  const [refreshTick, setRefreshTick] = useState(0);
-  const refresh = useCallback(() => setRefreshTick((value) => value + 1), []);
+  const pluginManagementService = services.pluginManagementService;
+  const workspaceIdentity = useTabStore((state) => state.activeWorkspaceIdentity ?? undefined);
+  const themes = useZCodeStore((state) => state.themePlugins);
+  const status = useZCodeStore((state) => state.themePluginsStatus);
+  const loadThemePlugins = useZCodeStore((state) => state.loadThemePlugins);
+  const refreshOnMount = options?.refreshOnMount === true;
+  // refreshOnMount 只强制刷新一次：插件变更点已经负责后续 force 刷新，避免每次 effect 重跑都打网络。
+  const forcedOnMountRef = useRef(false);
 
   useEffect(() => {
-    if (!workspacePath) {
-      setThemes([]);
-      setStatus("idle");
-      return;
-    }
-    let cancelled = false;
-    // 切换 workspace 时先清空旧列表，避免用上一个 workspace 的主题短暂匹配 key。
-    setThemes([]);
-    setStatus("loading");
-    services.pluginManagementService
-      .listThemes({ workspacePath })
-      .then((result) => {
-        if (cancelled) return;
-        setThemes(result.themes);
-        setStatus("ready");
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setThemes([]);
-        setStatus("error");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspacePath, services, refreshTick]);
+    if (!workspacePath) return;
+    const force = refreshOnMount && !forcedOnMountRef.current;
+    forcedOnMountRef.current = true;
+    void loadThemePlugins({
+      service: pluginManagementService,
+      workspacePath,
+      ...(workspaceIdentity?.trim() ? { workspaceIdentity } : {}),
+      ...(force ? { force: true } : {}),
+    });
+  }, [loadThemePlugins, pluginManagementService, refreshOnMount, workspaceIdentity, workspacePath]);
+
+  const refresh = useCallback(() => {
+    if (!workspacePath) return;
+    void loadThemePlugins({
+      service: pluginManagementService,
+      workspacePath,
+      ...(workspaceIdentity?.trim() ? { workspaceIdentity } : {}),
+      force: true,
+    });
+  }, [loadThemePlugins, pluginManagementService, workspaceIdentity, workspacePath]);
 
   return { themes, status, refresh };
 }

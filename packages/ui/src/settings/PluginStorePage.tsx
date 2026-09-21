@@ -10,6 +10,7 @@ import { useServices } from "@/hooks/useServices.js";
 import { usePluginStoreOrder } from "@/hooks/usePluginStoreOrder.js";
 import { useZCodeSessionService } from "@/hooks/useZCodeSessionService.js";
 import { usePluginManagementStore } from "@/store/pluginManagementStore.js";
+import { useZCodeStore } from "@/store/StoreProvider.js";
 import type { CreateTaskRequest } from "@/app-shell/types.js";
 import { invalidateDeferredDraftSessionForSkillChange } from "@/lib/zcodeDraftSkillInvalidation.js";
 import { refreshSharedSkillStoreForWorkspace } from "@/lib/skillStoreRefresh.js";
@@ -91,6 +92,7 @@ export function PluginStorePage({
   const describePlugin = usePluginManagementStore((state) => state.describePlugin);
   const updatePlugin = usePluginManagementStore((state) => state.updatePlugin);
   const restoreBuiltin = usePluginManagementStore((state) => state.restoreBuiltin);
+  const loadThemePlugins = useZCodeStore((state) => state.loadThemePlugins);
 
   const [view, setView] = useState<PluginStoreView>("store");
   const [detailPluginId, setDetailPluginId] = useState<string | null>(null);
@@ -264,7 +266,24 @@ export function PluginStorePage({
       workspaceIdentity: normalizedWorkspaceIdentity,
       skillsService,
     });
-  }, [normalizedWorkspaceIdentity, skillsService, workspacePath, zcodeSessionService]);
+    if (!workspacePath) return;
+    // 市场只管理 Host User inventory（与 initialize 同一 scope）；主题清单同样要 force 重取，
+    // 否则安装主题插件后 App 侧清单仍是旧的（spec §4.4）。
+    await loadThemePlugins({
+      service: pluginManagementService,
+      workspacePath,
+      ...(normalizedWorkspaceIdentity ? { workspaceIdentity: normalizedWorkspaceIdentity } : {}),
+      configScope: "user",
+      force: true,
+    });
+  }, [
+    loadThemePlugins,
+    normalizedWorkspaceIdentity,
+    pluginManagementService,
+    skillsService,
+    workspacePath,
+    zcodeSessionService,
+  ]);
 
   const uninstall = usePluginUninstall({
     pluginService: pluginManagementService,
