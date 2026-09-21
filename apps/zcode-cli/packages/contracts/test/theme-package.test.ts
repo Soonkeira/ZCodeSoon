@@ -11,7 +11,8 @@ const validThemeFile = {
   id: "sereno-dark",
   name: "Sereno Dark",
   tokens: {
-    light: { "--color-brand": "#7c5cff", "--radius": "0.75rem" },
+    // 白名单要求 --radius-* 带后缀；裸 --radius 按 spec §3.3 会被拒
+    light: { "--color-brand": "#7c5cff", "--radius-lg": "0.75rem" },
     dark: { "--color-brand": "#9d85ff" },
   },
   suggestedFonts: { ui: "Inter", code: "JetBrains Mono" },
@@ -20,6 +21,10 @@ const validThemeFile = {
 
 test("valid theme file passes schema", () => {
   assert.equal(pluginThemeFileSchema.safeParse(validThemeFile).success, true);
+});
+
+test("valid theme file passes parse-level validation", () => {
+  assert.equal(parsePluginThemeFile(validThemeFile).ok, true);
 });
 
 test("token key outside --color-*/--radius-* whitelist is rejected", () => {
@@ -49,9 +54,10 @@ test("invalid color value is rejected", () => {
 test("radius without px/rem unit is rejected", () => {
   const result = parsePluginThemeFile({
     ...validThemeFile,
-    tokens: { light: { "--radius": "10" } },
+    tokens: { light: { "--radius-lg": "10" } },
   });
   assert.equal(result.ok, false);
+  assert.match(result.ok ? "" : result.reason, /px or rem/);
 });
 
 test("theme id pattern is enforced", () => {
@@ -64,6 +70,7 @@ test("css safety scan blocks dangerous constructs", () => {
   assert.equal(scanThemeCssSafety("@import url('x.css');").ok, false);
   assert.equal(scanThemeCssSafety("a { color: javascript:red }").ok, false);
   assert.equal(scanThemeCssSafety('@charset "utf-8";').ok, false);
+  assert.equal(scanThemeCssSafety('a { background: image-set("x" 1x) }').ok, false);
   assert.equal(scanThemeCssSafety(".chat-bubble { border-radius: 12px; }").ok, true);
 });
 

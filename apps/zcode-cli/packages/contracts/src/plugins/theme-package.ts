@@ -132,7 +132,8 @@ export interface ThemeCssSafetyResult {
 }
 
 export function scanThemeCssSafety(cssText: string): ThemeCssSafetyResult {
-  if (cssText.length > MAX_THEME_CSS_LENGTH) {
+  // 上限按 UTF-8 字节计量，与 spec §3.4「256 KiB」及 reason 文案一致
+  if (Buffer.byteLength(cssText, "utf8") > MAX_THEME_CSS_LENGTH) {
     return { ok: false, reason: `theme css exceeds ${MAX_THEME_CSS_LENGTH} bytes` };
   }
   const blocked = THEME_CSS_BLOCKED_PATTERN.exec(cssText);
