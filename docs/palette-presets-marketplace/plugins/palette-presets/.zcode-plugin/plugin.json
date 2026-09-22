@@ -1,7 +1,7 @@
 {
   "name": "palette-presets",
   "version": "1.0.0",
-  "description": "调色盘静态预设：色值与 Soonkeira/ZCodeSoon 内置调色盘同源（6 主色 × 8 底色，浅色/深色各一组 token）",
+  "description": "调色盘静态预设：色值与 Soonkeira/ZCodeSoon 内置调色盘同源（6 主色 × 8 底色，浅色/深色各一组 token）；需 ZCodeSoon 等含主题插件功能的构建，官方 ZCode 无「主题包」入口、装了不显示",
   "author": {
     "name": "Soonkeira"
   },

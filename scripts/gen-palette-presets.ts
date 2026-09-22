@@ -121,13 +121,13 @@ async function main(): Promise<void> {
   await writeJson(join(PLUGIN_DIR, ".zcode-plugin", "plugin.json"), {
     name: PLUGIN_NAME,
     version: "1.0.0",
-    description: `调色盘静态预设：色值与 Soonkeira/ZCodeSoon 内置调色盘同源（${primaryCount} 主色 × ${baseCount} 底色，浅色/深色各一组 token）`,
+    description: `调色盘静态预设：色值与 Soonkeira/ZCodeSoon 内置调色盘同源（${primaryCount} 主色 × ${baseCount} 底色，浅色/深色各一组 token）；需 ZCodeSoon 等含主题插件功能的构建，官方 ZCode 无「主题包」入口、装了不显示`,
     author: { name: "Soonkeira" },
     themes: "themes",
   });
   await writeJson(join(MARKETPLACE_DIR, "marketplace.json"), {
     name: PLUGIN_NAME,
-    description: `共 ${modeTokenSets} 组主色×底色×明暗预设（${themes.length} 个主题包 = ${primaryCount} 主色 × ${baseCount} 底色），源自 fork 内置调色盘，浅色/深色各一组 token`,
+    description: `共 ${modeTokenSets} 组主色×底色×明暗预设（${themes.length} 个主题包 = ${primaryCount} 主色 × ${baseCount} 底色），源自 fork 内置调色盘，浅色/深色各一组 token；仅在含主题插件功能的构建（如 ZCodeSoon）中生效，官方 ZCode 不显示主题包`,
     plugins: [{ name: PLUGIN_NAME, source: `./plugins/${PLUGIN_NAME}` }],
   });
 
