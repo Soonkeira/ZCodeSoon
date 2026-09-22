@@ -55,6 +55,17 @@ function syncBrowserThemeSurface(resolved: ResolvedTheme) {
   }
 }
 
+/**
+ * 调色盘 token 变化后的 meta theme-color 刷新包装（spec 2026-09-22-color-palette-design §1）：
+ * 调色盘改写 html 内联 --color-background 后 computed 值已变，这里复用 syncBrowserThemeSurface
+ * 重读一次。resolved 明暗从 DOM dark class 折算——applyTheme 保证 class 与当前主题同步，
+ * 与 resolveTheme(当前主题) 等价，且避免 useTheme.ts 反向依赖 store。
+ */
+export function refreshBrowserThemeSurface(): void {
+  if (typeof document === "undefined") return;
+  syncBrowserThemeSurface(document.documentElement.classList.contains("dark") ? "dark" : "light");
+}
+
 export function applyTheme(theme: Theme) {
   const resolved = resolveTheme(theme);
   const appliedTheme =

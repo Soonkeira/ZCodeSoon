@@ -63,6 +63,7 @@ import { useTaskSidePaneMemoryBridge } from "@/app-shell/useTaskSidePaneMemoryBr
 import { resolveAppWorkspaceRpcTarget } from "@/app-shell/workspaceRpcTarget.js";
 import { useWorkspaceServicesResolution } from "@/hooks/useWorkspaceServices.js";
 import { useThemePluginApplication } from "@/hooks/useThemePlugins.js";
+import { usePaletteApplication } from "@/hooks/usePaletteApplication.js";
 import { useWorkspaceTerminalTaskNotifications } from "@/hooks/useTaskNotifications.js";
 import { useOffPeakTaskNotifications } from "@/hooks/useOffPeakTaskNotifications.js";
 import type { AppProps, WorkspaceMainView } from "@/app-shell/types.js";
@@ -357,6 +358,8 @@ export function App({
   const theme = useZCodeStore((s) => s.theme);
   const setTheme = useZCodeStore((s) => s.setTheme);
   useThemePluginApplication();
+  // effect 顺序契约（spec §4）：调色盘必须声明在主题插件应用之后，后跑者收敛。
+  usePaletteApplication();
   const {
     isMacFullscreen,
     desktopWindowChromeState,

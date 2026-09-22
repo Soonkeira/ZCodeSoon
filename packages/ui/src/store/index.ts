@@ -1,3 +1,4 @@
+/* oxlint-disable eslint(max-lines) -- Store 集中接线广播字段、订阅分发与启动重放；皮肤字段按 uiFontSize/themePlugin 既有切片模式接入，超限时沿用 SettingsPage/App 的行数豁免先例。 */
 /**
  * Zustand Store —— 全局状态管理
  *
@@ -37,6 +38,21 @@ import {
   THEME_PLUGIN_BROADCAST_FIELDS,
   type ThemePluginStateSlice,
 } from "@/store/themePluginState.js";
+import {
+  applyCustomSkinBroadcast,
+  applyStoredCustomSkin,
+  createBlurBroadcastScheduler,
+  createCustomSkinState,
+  CUSTOM_SKIN_BROADCAST_FIELDS,
+  type CustomSkinStateSlice,
+} from "@/store/customSkinState.js";
+import {
+  applyPaletteBroadcast,
+  applyStoredPalette,
+  createPaletteState,
+  PALETTE_BROADCAST_FIELDS,
+  type PaletteStateSlice,
+} from "@/store/paletteState.js";
 import {
   isTaskNotificationEnabled,
   isTaskNotificationSoundPreferenceEnabled,
@@ -106,7 +122,10 @@ function loadPerformanceMode(): boolean {
 // State 定义
 // ============================================================================
 
-export interface ZCodeState extends ThemePluginStateSlice {
+export interface ZCodeState
+  extends ThemePluginStateSlice,
+    CustomSkinStateSlice,
+    PaletteStateSlice {
   /** 展示详情偏好，不改变 Agent 权限或执行能力。 */
   interfaceMode: InterfaceMode;
   setInterfaceMode: (mode: InterfaceMode) => void;
@@ -219,7 +238,12 @@ export interface ZCodeState extends ThemePluginStateSlice {
 // ============================================================================
 
 const CORE_BROADCAST_FIELDS = ["theme", "locale", "uiFontSizePx", "interfaceMode"] as const;
-const BROADCAST_FIELD_NAMES = [...CORE_BROADCAST_FIELDS, ...THEME_PLUGIN_BROADCAST_FIELDS] as const;
+const BROADCAST_FIELD_NAMES = [
+  ...CORE_BROADCAST_FIELDS,
+  ...THEME_PLUGIN_BROADCAST_FIELDS,
+  ...CUSTOM_SKIN_BROADCAST_FIELDS,
+  ...PALETTE_BROADCAST_FIELDS,
+] as const;
 
 type BroadcastField = (typeof BROADCAST_FIELD_NAMES)[number];
 
@@ -304,6 +328,8 @@ export function createZCodeStore(
     },
 
     ...createThemePluginState((patch) => set(patch)),
+    ...createCustomSkinState((patch) => set(patch)),
+    ...createPaletteState((patch) => set(patch)),
 
     performanceMode: loadPerformanceMode(),
     setPerformanceMode: (enabled: boolean) => {
@@ -444,6 +470,11 @@ export function createZCodeStore(
     };
   };
 
+  // spec §3：blur 滑块连发时对广播做 300ms 防抖，只发最后一次取值；state 仍即时更新。
+  const scheduleCustomSkinBlurBroadcast = createBlurBroadcastScheduler((payload) => {
+    broadcastService.send({ channel: `${STATE_CHANNEL_PREFIX}customSkinBlurPx`, payload });
+  });
+
   // Zustand v5 的 setState 在 replace=true/false 上使用了不同重载，
   // 之前直接包一层并透传 replace，会在严格类型下落到互不兼容的签名分支。
   // 这里改成订阅状态变化后再广播，只比较真正需要跨窗口同步的字段，逻辑更直观，也避免重载冲突。
@@ -454,6 +485,11 @@ export function createZCodeStore(
 
     for (const field of BROADCAST_FIELDS as Set<BroadcastField>) {
       if (state[field] === prevState[field]) {
+        continue;
+      }
+
+      if (field === "customSkinBlurPx") {
+        scheduleCustomSkinBlurBroadcast(state.customSkinBlurPx);
         continue;
       }
 
@@ -485,6 +521,10 @@ export function createZCodeStore(
       const state = useStore.getState();
       // 主题插件字段由切片分发；命中即跳过后续核心字段分支。
       if (applyThemePluginBroadcast(state, field, msg.payload)) return;
+      // 自定义皮肤字段同理由切片认领：收端只 setState + 本窗口门控，不回写 localStorage。
+      if (applyCustomSkinBroadcast(useStore, field, msg.payload)) return;
+      // 调色盘字段同样由切片认领：收端只 normalize + setState（防回环），DOM 由 App effect 重放。
+      if (applyPaletteBroadcast(useStore, field, msg.payload)) return;
       if (field === "theme" && typeof msg.payload === "string") {
         state.setTheme(msg.payload as Theme);
       } else if (field === "locale" && typeof msg.payload === "string") {
@@ -506,6 +546,9 @@ export function createZCodeStore(
   applyTheme(useStore.getState().theme);
   applyUiFontSizePx(useStore.getState().uiFontSizePx);
   applyStoredThemePluginAppearance(useStore.getState());
+  applyStoredCustomSkin(useStore);
+  // 启动重放调色盘选择（spec §4：load → set）；内联 token 由 App 级 effect 应用。
+  applyStoredPalette(useStore);
   document.documentElement.classList.toggle(
     "dark",
     resolveTheme(useStore.getState().theme) === "dark",

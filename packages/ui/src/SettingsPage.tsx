@@ -350,6 +350,17 @@ export function SettingsPage({
   const setUiFontFamily = useZCodeStore((state) => state.setUiFontFamily);
   const codeFontFamily = useZCodeStore((state) => state.codeFontFamily);
   const setCodeFontFamily = useZCodeStore((state) => state.setCodeFontFamily);
+  const customSkinImage = useZCodeStore((state) => state.customSkinImage);
+  const customSkinBlurPx = useZCodeStore((state) => state.customSkinBlurPx);
+  const customSkinError = useZCodeStore((state) => state.customSkinError);
+  const setCustomSkinImage = useZCodeStore((state) => state.setCustomSkinImage);
+  const setCustomSkinBlurPx = useZCodeStore((state) => state.setCustomSkinBlurPx);
+  const clearCustomSkin = useZCodeStore((state) => state.clearCustomSkin);
+  const palettePrimaryId = useZCodeStore((state) => state.palettePrimaryId);
+  const paletteBaseId = useZCodeStore((state) => state.paletteBaseId);
+  const setPalettePrimaryId = useZCodeStore((state) => state.setPalettePrimaryId);
+  const setPaletteBaseId = useZCodeStore((state) => state.setPaletteBaseId);
+  const resetPalette = useZCodeStore((state) => state.resetPalette);
   const notificationEnabled = useZCodeStore((state) => state.notificationEnabled);
   const setNotificationEnabled = useZCodeStore((state) => state.setNotificationEnabled);
   const notificationSoundEnabled = useZCodeStore((state) => state.notificationSoundEnabled);
@@ -1820,6 +1831,92 @@ export function SettingsPage({
                             setUiFontFamily={setUiFontFamily}
                             codeFontFamily={codeFontFamily}
                             setCodeFontFamily={setCodeFontFamily}
+                            customSkinImage={customSkinImage}
+                            customSkinBlurPx={customSkinBlurPx}
+                            customSkinError={customSkinError}
+                            setCustomSkinImage={(image) =>
+                              runUserAction({
+                                input: {
+                                  featureId: "settings.appearance",
+                                  action: "change_custom_skin_image",
+                                  trigger: "button",
+                                },
+                                operation: () => setCustomSkinImage(image),
+                                completed: { resultSource: "local_commit" },
+                                failureStage: "local_commit",
+                              })
+                            }
+                            setCustomSkinBlurPx={(blurPx) =>
+                              runUserAction({
+                                input: {
+                                  featureId: "settings.appearance",
+                                  action: "change_custom_skin_blur",
+                                  trigger: "drag",
+                                },
+                                operation: () => setCustomSkinBlurPx(blurPx),
+                                completed: {
+                                  resultSource: "local_commit",
+                                  valueAfter: String(blurPx),
+                                },
+                                failureStage: "local_commit",
+                              })
+                            }
+                            clearCustomSkin={() =>
+                              runUserAction({
+                                input: {
+                                  featureId: "settings.appearance",
+                                  action: "clear_custom_skin",
+                                  trigger: "button",
+                                },
+                                operation: () => clearCustomSkin(),
+                                completed: { resultSource: "local_commit" },
+                                failureStage: "local_commit",
+                              })
+                            }
+                            palettePrimaryId={palettePrimaryId}
+                            paletteBaseId={paletteBaseId}
+                            setPalettePrimaryId={(id) =>
+                              runUserAction({
+                                input: {
+                                  featureId: "settings.appearance",
+                                  action: "change_palette_primary",
+                                  trigger: "button",
+                                },
+                                operation: () => setPalettePrimaryId(id),
+                                completed: {
+                                  resultSource: "local_commit",
+                                  valueAfter: id,
+                                },
+                                failureStage: "local_commit",
+                              })
+                            }
+                            setPaletteBaseId={(id) =>
+                              runUserAction({
+                                input: {
+                                  featureId: "settings.appearance",
+                                  action: "change_palette_base",
+                                  trigger: "button",
+                                },
+                                operation: () => setPaletteBaseId(id),
+                                completed: {
+                                  resultSource: "local_commit",
+                                  valueAfter: id,
+                                },
+                                failureStage: "local_commit",
+                              })
+                            }
+                            resetPalette={() =>
+                              runUserAction({
+                                input: {
+                                  featureId: "settings.appearance",
+                                  action: "reset_palette",
+                                  trigger: "button",
+                                },
+                                operation: () => resetPalette(),
+                                completed: { resultSource: "local_commit" },
+                                failureStage: "local_commit",
+                              })
+                            }
                           />
                         ) : activeSection === "shortcuts" ? (
                           <ShortcutSettingsSection isDesktop={Boolean(isDesktop)} />
