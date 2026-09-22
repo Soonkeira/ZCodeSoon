@@ -19,6 +19,28 @@ ZCode is an AI coding workspace with desktop, browser, and terminal interfaces. 
 | Web / ZCode CLI distribution | Terminal and browser workspace; packages the TUI, Web client, backend, and Agent together | `pnpm dev:web`                 |
 | Agent CLI                    | The `zcode` terminal interface, which also provides the Agent runtime for Desktop and Web | `pnpm --filter @zcode/cli dev` |
 
+## New in This Fork
+
+Two appearance features added on top of upstream [zai-org/ZCode](https://github.com/zai-org/ZCode), both available under **Settings → Appearance**:
+
+### Color palette (primary × surface)
+
+- Night / Day / System theme modes plus 6 primary colors × 8 surfaces — all **96 combinations pass WCAG AA** (including the 7:1 "High-contrast AAA" primary, whose `contrast` variant also tightens its own surfaces).
+- Choices are stored in browser localStorage (per machine/browser, not synced); when a theme plugin is active it takes priority and the palette steps aside automatically.
+- Design spec: [docs/superpowers/specs/2026-09-22-color-palette-design.md](docs/superpowers/specs/2026-09-22-color-palette-design.md)
+
+### Custom skin (background image + blur)
+
+- Upload an image as a global background with a 0–50px blur slider; panels become translucent frosted glass while the skin is on, and clearing it restores the default appearance exactly.
+- Images are compressed (JPEG, longest edge ≤1920, ≈≤600KB) and stored locally, also per browser.
+- Design spec: [docs/superpowers/specs/2026-09-22-custom-skin-design.md](docs/superpowers/specs/2026-09-22-custom-skin-design.md)
+
+### Theme plugins (upstream mechanism)
+
+Colors can also be distributed as **theme plugins** (installable without rebuilding). A ready-to-install example directory marketplace ships in the repo: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/` — add it under Settings → Plugins → Add marketplace, install and enable `sereno-theme`, then pick it in the Theme package dropdown. Authoring guide: [docs/theme-plugin-authoring.md](docs/theme-plugin-authoring.md).
+
+> Note: the palette and custom skin are **built-in code** (settings UI + state layer), not plugins — other users need to build this fork to get them. The theme-plugin channel is an upstream capability.
+
 ## Setup
 
 Install Git, Node.js **24.14.0**, and pnpm **10.33.2**. [mise.toml](mise.toml) is the source of truth for tool versions. Run all development and packaging commands below from the repository root.

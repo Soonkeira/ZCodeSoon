@@ -19,6 +19,28 @@ ZCode 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Age
 | Web / ZCode 命令行版 | 终端与浏览器工作台；将 TUI、Web、后端和 Agent 组装为独立运行包 | `pnpm dev:web`                 |
 | Agent CLI            | 在终端中使用 `zcode`，也为 Desktop 和 Web 提供 Agent 运行时    | `pnpm --filter @zcode/cli dev` |
 
+## 本 Fork 新增功能
+
+在上游 [zai-org/ZCode](https://github.com/zai-org/ZCode) 基础上新增两项外观能力，均在 **设置 → 外观** 中直接可用：
+
+### 调色盘（主色 × 底色）
+
+- 「夜间 / 日间 / 系统」三档明暗切换 + 主色 6 种 × 底色 8 种自由组合，共 **96 种搭配全部通过 WCAG AA 校验**（含 7:1 的「高对比 AAA」主色与自带表层收紧的 contrast 方案）。
+- 选择保存在浏览器本地（localStorage），换设备或浏览器不携带；与主题插件同时激活时主题插件优先、调色盘自动让位。
+- 设计说明：[docs/superpowers/specs/2026-09-22-color-palette-design.md](docs/superpowers/specs/2026-09-22-color-palette-design.md)
+
+### 自定义皮肤（背景图 + 模糊度）
+
+- 上传一张图片作为全局背景，0–50px 模糊度滑块调节清晰度；开启时面板半透明毛玻璃透出背景，清除后与默认外观完全一致。
+- 图片自动压缩（长边 ≤1920 的 JPEG，约 ≤600KB）后存本地，同样不跨设备。
+- 设计说明：[docs/superpowers/specs/2026-09-22-custom-skin-design.md](docs/superpowers/specs/2026-09-22-custom-skin-design.md)
+
+### 主题插件（沿用上游机制）
+
+配色还可以走**主题插件**分发（无需重新构建，安装即用）。仓库内置可直接安装的示例本地目录市场：`apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/`，在 设置 → 插件 → 添加插件市场 中选择该目录，安装并启用 `sereno-theme` 后即可在「主题包」下拉中选中。编写自己的主题插件见 [docs/theme-plugin-authoring.md](docs/theme-plugin-authoring.md)。
+
+> 注意：调色盘与自定义皮肤是**内置代码**（设置页 UI + 状态层），不是插件；其他用户需要构建本 fork 才能获得。主题插件通道为上游既有能力。
+
 ## 初始化
 
 准备 Git、Node.js **24.14.0** 和 pnpm **10.33.2**，版本以 [mise.toml](mise.toml) 为准。以下开发和打包命令均在仓库根目录执行。
