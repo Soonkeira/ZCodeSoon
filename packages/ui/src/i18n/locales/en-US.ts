@@ -1732,7 +1732,7 @@ const enUS: Record<string, string> = {
   "settings.palette.modeDay": "Day",
   "settings.palette.modeSystem": "System",
   "settings.palette.reset": "Reset to default",
-  "settings.palette.pluginActive": "A theme package is active; the palette resumes after it is disabled",
+  "settings.palette.pluginActive": "A theme package is active; primary and surface yield (theme mode still switches); the palette resumes after it is disabled",
   "settings.palette.summary": "Current: {primary} · {base} · {mode}",
   "settings.palette.primary.aurora": "Aurora",
   "settings.palette.primary.cyan": "Ice",

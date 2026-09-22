@@ -28,7 +28,7 @@
 **目标**：
 - 外观页「主题」Select 行替换为调色盘面板：明暗三 chips（夜间/日间/系统）+ 主色 6 chips + 底色 8 chips + 恢复默认。
 - 切换即时生效（html 内联 token 覆盖）、持久化（localStorage）、跨窗口广播、刷新重放。
-- 主题插件（sereno 等）激活时调色盘让位：token 清空、三排置灰 + 提示；插件停用/失效自动恢复。
+- 主题插件（sereno 等）激活时调色盘让位：token 清空、主色/底色两排置灰 + 提示；明暗行保持可用（主题包按明暗各带一组 token，禁用模式切换会让另一组够不着——2026-09-22 实测修正）；插件停用/失效自动恢复。
 - 96 组搭配全部通过 WCAG AA（脚本验证，以用户提供的终值色表为准）。
 - 与图片皮肤、主题插件三者独立叠加。
 
@@ -75,7 +75,7 @@ DOM 应用唯一挂点：usePaletteApplication effect（App.tsx，挂在 useThem
 1. 明暗行：三胶囊 chips（复用 THEME_MODES 的 mode+icon，含系统），绑定 `theme/setTheme`（沿用 `handleFooterThemeChange` 包装保持遥测一致）
 2. 主色行：6 胶囊 chips（色点圆点 + 名称），选中态边框强调
 3. 底色行：8 胶囊 chips + 右侧「恢复默认」按钮（outline + RotateCcw，照 ShortcutSettingsSection L222-230 先例；点击清两 key + 清 token + 回默认 id）
-- 主题包激活时三排 `disabled`，行下 `text-ui-sm text-foreground-subtle` 提示「主题包生效中，停用后调色盘恢复」（照 themePluginSelect L95-112 样式）；`activeThemePluginKey` 直接 `useZCodeStore` 读（免 prop）
+- 主题包激活时主色/底色两排与恢复默认 `disabled`（明暗三 chips **不禁用**：主题包本身 light/dark 双组 token，模式切换独立于主题包），行下 `text-ui-sm text-foreground-subtle` 提示（照 themePluginSelect L95-112 样式）；`activeThemePluginKey` 直接 `useZCodeStore` 读（免 prop）
 - 面包屑展示「主色 · 底色 · 明暗」现状（默认 `appearance.interfaceDescription` 位置或行内 hint）
 - props：`SettingsPage.tsx` 新增 palette 字段/ setter，setter 包 `runUserAction({featureId:"settings.appearance", action:"change_palette_primary|change_palette_base|reset_palette"})`
 - i18n `settings.palette.*` 两 locale（行标签、6+8 色名、恢复默认、让位提示、面包屑）
@@ -106,7 +106,7 @@ DOM 应用唯一挂点：usePaletteApplication effect（App.tsx，挂在 useThem
 
 1. 切主色/底色全 UI 即时变化（含 win-alt 窗口 frame、zai 主题下 input 聚焦跟随主色）
 2. 明暗三 chips 与原 Select 等价（system 监听、侧栏 footer 快捷切换、跨窗口广播无回归）
-3. sereno 激活：调色盘 token 清空、三排置灰+提示；停用后自动恢复
+3. sereno 激活：调色盘 token 清空、主色/底色两排置灰+提示（明暗仍可切换并驱动主题双组 token）；停用后自动恢复
 4. meta theme-color 跟随底色；刷新持久 + 双窗口同步
 5. 恢复默认一键回 石墨·沙丘（+当前明暗不变）
 6. AA 脚本 6×8×2=96 组全过

@@ -1633,7 +1633,7 @@ const zhCN: Record<string, string> = {
   "settings.palette.modeDay": "日间",
   "settings.palette.modeSystem": "系统",
   "settings.palette.reset": "恢复默认",
-  "settings.palette.pluginActive": "主题包生效中，停用后调色盘恢复",
+  "settings.palette.pluginActive": "主题包生效中，主色与底色暂时让位（明暗仍可切换）；停用后调色盘恢复",
   "settings.palette.summary": "当前：{primary} · {base} · {mode}",
   "settings.palette.primary.aurora": "极光青绿",
   "settings.palette.primary.cyan": "冰青",

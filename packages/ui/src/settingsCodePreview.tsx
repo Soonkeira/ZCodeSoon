@@ -170,7 +170,9 @@ function modeLabelId(mode: Theme): string {
 
 /**
  * 外观卡「明暗三 chips + 主色 6 chips + 底色 8 chips + 恢复默认」三行
- * （spec §5）。主题包（activeThemePluginKey）生效时整组 disabled 并给出行下提示——
+ * （spec §5）。主题包（activeThemePluginKey）生效时**主色/底色两排** disabled
+ * 并给出行下提示；明暗行保持可用——主题包本身按明暗各带一组 token，
+ * 激活期间禁用模式切换会让另一组配色永远够不着（上游语义：模式独立于主题包）。
  * activeThemePluginKey 直接 useZCodeStore 读，不新增 props。
  */
 function PaletteThemeControls({
@@ -219,7 +221,6 @@ function PaletteThemeControls({
           <PaletteChip
             key={mode}
             selected={theme === mode}
-            disabled={disabled}
             onClick={() => setTheme(mode)}
           >
             <Icon className="size-4" />
