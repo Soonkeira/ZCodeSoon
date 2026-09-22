@@ -1,0 +1,44 @@
+{
+  "id": "cyan-mist",
+  "name": "冰青 · 冷雾",
+  "tokens": {
+    "light": {
+      "--color-brand": "#0a6f86",
+      "--color-accent": "rgba(10,111,134,0.09)",
+      "--color-interaction-ask-surface": "color-mix(in oklab, var(--color-brand) 10%, var(--color-card))",
+      "--color-interaction-ask-foreground": "color-mix(in oklab, var(--color-brand) 72%, #0b1220)",
+      "--color-file-node": "color-mix(in oklab, var(--color-brand) 16%, transparent)",
+      "--color-file-node-hover": "color-mix(in oklab, var(--color-brand) 24%, transparent)",
+      "--color-file-node-foreground": "var(--color-brand)",
+      "--color-git-renamed": "var(--color-brand)",
+      "--color-usage-chart-1": "var(--color-brand)",
+      "--color-input-border-focused": "var(--color-brand)",
+      "--color-context-breakdown-1": "color-mix(in oklab, var(--color-brand) 100%, var(--color-background))",
+      "--color-context-breakdown-2": "color-mix(in oklab, var(--color-brand) 78%, var(--color-background))",
+      "--color-context-breakdown-3": "color-mix(in oklab, var(--color-brand) 60%, var(--color-background))",
+      "--color-context-breakdown-4": "color-mix(in oklab, var(--color-brand) 46%, var(--color-background))",
+      "--color-context-breakdown-5": "color-mix(in oklab, var(--color-brand) 34%, var(--color-background))",
+      "--color-context-breakdown-6": "color-mix(in oklab, var(--color-brand) 24%, var(--color-background))",
+      "--color-context-breakdown-7": "color-mix(in oklab, var(--color-brand) 16%, var(--color-background))"
+    },
+    "dark": {
+      "--color-brand": "#2ac2e0",
+      "--color-accent": "rgba(42,194,224,0.12)",
+      "--color-interaction-ask-surface": "color-mix(in oklab, var(--color-brand) 20%, var(--color-background))",
+      "--color-interaction-ask-foreground": "color-mix(in oklab, var(--color-brand) 65%, #ffffff)",
+      "--color-file-node": "color-mix(in oklab, var(--color-brand) 18%, transparent)",
+      "--color-file-node-hover": "color-mix(in oklab, var(--color-brand) 26%, transparent)",
+      "--color-file-node-foreground": "color-mix(in oklab, var(--color-brand) 75%, #ffffff)",
+      "--color-git-renamed": "var(--color-brand)",
+      "--color-usage-chart-1": "var(--color-brand)",
+      "--color-input-border-focused": "var(--color-brand)",
+      "--color-context-breakdown-1": "color-mix(in oklab, var(--color-brand) 100%, var(--color-background))",
+      "--color-context-breakdown-2": "color-mix(in oklab, var(--color-brand) 78%, var(--color-background))",
+      "--color-context-breakdown-3": "color-mix(in oklab, var(--color-brand) 60%, var(--color-background))",
+      "--color-context-breakdown-4": "color-mix(in oklab, var(--color-brand) 46%, var(--color-background))",
+      "--color-context-breakdown-5": "color-mix(in oklab, var(--color-brand) 34%, var(--color-background))",
+      "--color-context-breakdown-6": "color-mix(in oklab, var(--color-brand) 24%, var(--color-background))",
+      "--color-context-breakdown-7": "color-mix(in oklab, var(--color-brand) 16%, var(--color-background))"
+    }
+  }
+}

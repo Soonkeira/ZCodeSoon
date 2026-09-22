@@ -1,0 +1,22 @@
+{
+  // 仓库根 tsconfig 仅服务两件事：
+  // 1) `node --import tsx scripts/*.ts`（从仓库根执行）解析 packages/ui 源码里的 `@/` 别名
+  //    —— tsx 按 cwd 查找 tsconfig，根目录缺这份文件时脚本对 palette.ts 的 `@/` 导入会失败；
+  // 2) scripts/*.ts 的编辑器类型上下文。
+  // 不参与 `pnpm typecheck`（typecheck 按显式项目列表构建，不含 scripts/）。
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./packages/ui/src/*"]
+    },
+    "target": "es2024",
+    "lib": ["es2024", "dom", "dom.iterable"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true
+  },
+  "include": ["scripts/**/*.ts"]
+}

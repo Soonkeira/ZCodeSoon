@@ -28,6 +28,7 @@ ZCode 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Age
 - 「夜间 / 日间 / 系统」三档明暗切换 + 主色 6 种 × 底色 8 种自由组合，共 **96 种搭配全部通过 WCAG AA 校验**（含 7:1 的「高对比 AAA」主色与自带表层收紧的 contrast 方案）。
 - 选择保存在浏览器本地（localStorage），换设备或浏览器不携带；与主题插件同时激活时主题插件优先、调色盘自动让位。
 - 设计说明：[docs/superpowers/specs/2026-09-22-color-palette-design.md](docs/superpowers/specs/2026-09-22-color-palette-design.md)
+- 不构建也可通过添加本地目录市场 `docs/palette-presets-marketplace/` 安装静态预设：共 **96 组明暗配色**（48 个主题包 = 6 主色 × 8 底色，浅色/深色各一组 token）；在插件设置里选该目录 → 安装启用 → 外观·主题包选用。
 
 ### 自定义皮肤（背景图 + 模糊度）
 

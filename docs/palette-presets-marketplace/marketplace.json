@@ -1,0 +1,10 @@
+{
+  "name": "palette-presets",
+  "description": "共 96 组主色×底色×明暗预设（48 个主题包 = 6 主色 × 8 底色），源自 fork 内置调色盘，浅色/深色各一组 token",
+  "plugins": [
+    {
+      "name": "palette-presets",
+      "source": "./plugins/palette-presets"
+    }
+  ]
+}

@@ -28,6 +28,7 @@ Two appearance features added on top of upstream [zai-org/ZCode](https://github.
 - Night / Day / System theme modes plus 6 primary colors × 8 surfaces — all **96 combinations pass WCAG AA** (including the 7:1 "High-contrast AAA" primary, whose `contrast` variant also tightens its own surfaces).
 - Choices are stored in browser localStorage (per machine/browser, not synced); when a theme plugin is active it takes priority and the palette steps aside automatically.
 - Design spec: [docs/superpowers/specs/2026-09-22-color-palette-design.md](docs/superpowers/specs/2026-09-22-color-palette-design.md)
+- Install without building via the local directory marketplace `docs/palette-presets-marketplace/`: **96 light/dark combinations** across 48 theme packages (6 primaries × 8 surfaces, one light and one dark token set each); pick the directory in Plugin settings → install & enable → choose under Appearance → Theme package.
 
 ### Custom skin (background image + blur)
 
