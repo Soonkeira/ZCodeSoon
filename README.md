@@ -40,7 +40,7 @@ ZCode 是 AI 编程工作台，提供桌面应用、浏览器界面和终端 Age
 
 配色还可以走**主题插件**分发（无需重新构建，安装即用）。仓库内置可直接安装的示例本地目录市场：`apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/`，在 设置 → 插件 → 添加插件市场 中选择该目录，安装并启用 `sereno-theme` 后即可在「主题包」下拉中选中。编写自己的主题插件见 [docs/theme-plugin-authoring.md](docs/theme-plugin-authoring.md)。
 
-> 注意：调色盘与自定义皮肤是**内置代码**（设置页 UI + 状态层），不是插件；其他用户需要构建本 fork 才能获得。主题插件通道为上游既有能力。
+> 注意：调色盘与自定义皮肤是**内置代码**（设置页 UI + 状态层），不是插件；其他用户需要构建本 fork 才能获得。主题插件通道（plugin.json 的 themes 组件与「主题包」入口）同样是本 fork 新增——经 git 核实上游与两个官方市场均无该机制。
 
 ## 初始化
 

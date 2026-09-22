@@ -40,7 +40,7 @@ Two appearance features added on top of upstream [zai-org/ZCode](https://github.
 
 Colors can also be distributed as **theme plugins** (installable without rebuilding). A ready-to-install example directory marketplace ships in the repo: `apps/zcode-cli/packages/adapters/test/fixtures/sereno-marketplace/` — add it under Settings → Plugins → Add marketplace, install and enable `sereno-theme`, then pick it in the Theme package dropdown. Authoring guide: [docs/theme-plugin-authoring.md](docs/theme-plugin-authoring.md).
 
-> Note: the palette and custom skin are **built-in code** (settings UI + state layer), not plugins — other users need to build this fork to get them. The theme-plugin channel is an upstream capability.
+> Note: the palette and custom skin are **built-in code** (settings UI + state layer), not plugins — other users need to build this fork to get them. The theme-plugin channel (the plugin.json "themes" component and the "Theme package" picker) is also new in this fork — git confirms neither upstream nor the two official marketplaces ship this mechanism.
 
 ## Setup
 
