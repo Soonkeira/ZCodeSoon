@@ -73,12 +73,11 @@
       body {
         background: var(--zcode-bootstrap-bg, var(--color-background, #0f172a));
         color: var(--zcode-bootstrap-fg, var(--color-foreground, #e2e8f0));
+        /* 启动样式优先消费 --font-sans：否则这里的字面量会挡住「外观 → 界面字体」的
+           token 覆盖，导致 Web 端切换字体后 body 及全部继承文本不变化。应用样式加载前
+           该变量未定义，回退到原有启动字体栈，首屏观感保持不变。 */
         font-family:
-          Inter,
-          -apple-system,
-          BlinkMacSystemFont,
-          "Segoe UI",
-          sans-serif;
+          var(--font-sans, Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
       }
 
       html[data-zcode-bootstrap-theme="light"] body {
