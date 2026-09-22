@@ -133,6 +133,20 @@ function createDevReadyMarkerHook(target: "main" | "host" | "preload"): string {
   return `node scripts/write-dev-ready-marker.mjs ${target}`;
 }
 
+// watch 忽略列表原先以 CLI flag + 单引号 glob 写在 dev 脚本里：Windows 下 pnpm→cmd
+// 不认单引号，会把引号原样带进 pattern 导致永不匹配；改成双引号又会与 concurrently
+// 外层引号形成嵌套转义。放进 tsup 配置后完全绕开 shell 引号与 glob 展开差异。
+const desktopWatchIgnores = {
+  ignoreWatch: [
+    "mock-cdn/**",
+    "bundled-agents/**",
+    ".e2e-cache/**",
+    ".e2e-artifacts/**",
+    ".e2e-home-*/**",
+    "dist-cua-helper/**",
+  ],
+};
+
 export default defineConfig([
   {
     name: "main",
@@ -176,6 +190,7 @@ export default defineConfig([
       options.chunkNames = "main/chunk-[hash]";
     },
     onSuccess: createDevReadyMarkerHook("main"),
+    ...desktopWatchIgnores,
     ...desktopTsupBundleSecurityOptions,
   },
   {
@@ -200,6 +215,7 @@ export default defineConfig([
       applyDesktopTsupEsbuildSecurityOptions(options);
     },
     onSuccess: createDevReadyMarkerHook("preload"),
+    ...desktopWatchIgnores,
     ...desktopTsupBundleSecurityOptions,
   },
   {
@@ -232,6 +248,7 @@ export default defineConfig([
       options.chunkNames = "host/chunk-[hash]";
     },
     onSuccess: createDevReadyMarkerHook("host"),
+    ...desktopWatchIgnores,
     ...desktopTsupBundleSecurityOptions,
   },
   {
@@ -260,6 +277,7 @@ export default defineConfig([
       options.chunkNames = "scheduler/chunk-[hash]";
     },
     onSuccess: createDevReadyMarkerHook("scheduler"),
+    ...desktopWatchIgnores,
     ...desktopTsupBundleSecurityOptions,
   },
 ]);
