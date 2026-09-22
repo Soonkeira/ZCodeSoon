@@ -97,6 +97,18 @@ export function applyPluginThemeTokens(tokens: Record<string, string>): void {
   appliedThemeTokenKeys = Object.keys(tokens);
 }
 
+/**
+ * 只读查询：该内联 key 当前是否记录在插件的已应用集合（appliedThemeTokenKeys）中。
+ * 纯 getter、零逻辑改动——不参与插件的写入/清除，不改变任何既有行为；这是调色盘
+ * 让位判定的依赖（palette.ts 的 applyPaletteTokens 用它做「系统级归属」：同名内联
+ * key 的 removeProperty 按 key 名删除、无法仅凭值分辨写入者，预设色值与内置调色盘
+ * 同源时等值巧合必现，必须先问"这个 key 是不是插件的"）。
+ * 此前"零改动 themePlugin.ts"约束针对其应用/清除逻辑；本只读 getter 经调度方确认后新增。
+ */
+export function hasAppliedThemeTokenKey(key: string): boolean {
+  return appliedThemeTokenKeys.includes(key);
+}
+
 /** 单 <style id="zcode-theme-plugin"> 整体替换，null 即移除；css 经 @scope (#root) 包裹。 */
 export function applyPluginThemeCss(cssText: string | null): void {
   if (typeof document === "undefined") return;

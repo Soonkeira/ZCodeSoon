@@ -12,8 +12,8 @@
 - 四个主题块（light/.dark/.theme-zai-light/.theme-zai-dark）中，background 家族与全部固定面色（card/panel/popover/input/menu/toast/tooltip/tag/sidebar/header/tab/secondary 等 ~19 项）**均为 neutral-* 字面量或写死 hex，不从 background 派生**——底色必须逐项覆盖，否则出现彩底浮白卡。
 - 主色一族：`--color-brand` 及其全部 `var()` 消费自动跟随；但 `--color-accent`、`interaction-ask-*`、`file-node*`、`git-renamed`、`usage-chart-1`、`context-breakdown-1..7` 为独立字面量需覆盖；**zai 两块的 `--color-input-border-focused` 引用 `--color-border-hover` 而非 brand，必须显式覆盖**否则 zai 主题下输入聚焦不跟随主色。
 - `border/surface/hover` 系为黑白 alpha，自适应新底色，不覆盖。
-- 内联 token 写入无 schema 门槛（`applyPluginThemeTokens` 裸 setProperty）；但调色盘**不得复用**该函数与其 `appliedThemeTokenKeys` 记录（共享记录会互相清错），须独立 applier。
-- 主题插件与调色盘写同一批内联变量，同一 html style 上 `removeProperty` 按 key 生效不分辨写入者 → 协调策略为**插件激活时调色盘让位**，靠 `App.tsx` 内 effect 声明顺序（插件先、调色盘后）保证任一方向切换都由后跑者收敛到正确状态。
+- 内联 token 写入无 schema 门槛（`applyPluginThemeTokens` 裸 setProperty）；但调色盘**不得复用**该函数与其 `appliedThemeTokenKeys` 记录（共享记录会互相清错），须独立 applier。**等值 bug 修复补充**：独立 applier 不变，仅新增对插件已应用集合的**只读**归属查询 `hasAppliedThemeTokenKey(key)`——读归属、不共享写入记录。
+- 主题插件与调色盘写同一批内联变量，同一 html style 上 `removeProperty` 按 key 生效不分辨写入者 → 协调策略为**插件激活时调色盘让位**，靠 `App.tsx` 内 effect 声明顺序（插件先、调色盘后）保证任一方向切换都由后跑者收敛到正确状态。**但 effect 顺序 + 值判定不足以覆盖等值情形**：预设色值与内置调色盘同源（同出 palette.ts），选与当前调色盘相同的预设时插件写入值恰等于调色盘记录值，会让位误删——故让位清除叠**双重归属判定**（见 §4）。
 - meta theme-color 读 computed `--color-background`（`useTheme.ts:52`），调色盘改色后需主动刷新一次。
 - 首屏启动脚本不接调色盘：与主题插件 token 同基线（插件也没接），首帧默认配色可接受。
 
@@ -60,14 +60,15 @@ zustand slice paletteState ←—— 唯一所有者
    ├─ 广播 PALETTE_BROADCAST_FIELDS（收端只 set 不 persist，防回环）
    └─ 启动重放：load → set
 DOM 应用唯一挂点：usePaletteApplication effect（App.tsx，挂在 useThemePluginApplication() 之后）
-   ├─ activeThemePluginKey != null → applyPaletteTokens({})   ← 让位（独立 appliedPaletteTokenKeys 精确清除）
+   ├─ activeThemePluginKey != null → applyPaletteTokens({})   ← 让位（独立 tracked keys + 双重归属判定清除，见下）
    └─ 否则 applyPaletteTokens(buildPaletteTokens(resolvedMode, primary, base))
         → 完成后调 refreshBrowserThemeSurface() 刷新 meta theme-color
 ```
 
 - effect 顺序契约：插件 effect 先跑（apply/clear 插件 token），调色盘 effect 后跑并收敛——插件激活时调色盘后清自己的 key；插件失效时插件先删自己的 key、调色盘随后重写自己的值。两系统各自独立 tracked keys，互不误清。
+- 让位清除走**双重归属判定**（等值 bug 修复）：① 系统级——该 key 在主题插件已应用集合（`hasAppliedThemeTokenKey`）→ 保留，无论值是否相同；② 值兜底——非插件 key 且当前内联值 === 调色盘记录值 → 删，不等 → 保留（保护其它外部写入者）。预设色值与调色盘同源，等值巧合必现，故系统级优先、值判定降级为兜底。插件停用路径不变：插件先清自己的 key，调色盘随后全量写入收回。
 - 主题模式切换（setTheme）会重跑 applyTheme（class 变化）→ 调色盘 effect 依赖 resolvedMode/theme，重放取新 light/dark 组。
-- 幂等：apply 先清 tracked keys 再写当前集合，重复调用收敛到同一 DOM。
+- 幂等：apply 先按双重判定清 tracked keys 再写当前集合，重复调用收敛到同一 DOM。
 
 ## 5. 设置 UI
 
@@ -95,7 +96,7 @@ DOM 应用唯一挂点：usePaletteApplication effect（App.tsx，挂在 useThem
 1. normalize：合法 id 透传、未知 id 回默认
 2. persist/load 往返（mock localStorage）+ 空值默认
 3. `buildPaletteTokens`：light/dark 各产出完整覆盖集（底色 19+ / 主色 13+ 项全在）；system 模式按 resolve 折算
-4. `applyPaletteTokens`：写入 tracked keys；二次不同集合调用精确清除旧 key 不残留；`{}` 清空全部
+4. `applyPaletteTokens`：写入 tracked keys；二次不同集合调用精确清除旧 key 不残留；`{}` 清空全部；**让位双重判定**：插件已应用且值与调色盘记录完全相同的 key 保留、插件未声明的等值 key 正常清除
 
 `packages/ui/test/paletteState.test.ts`：
 1. setter normalize→persist→set 顺序

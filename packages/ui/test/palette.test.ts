@@ -17,6 +17,7 @@ import {
   persistPaletteBaseId,
   persistPalettePrimaryId,
 } from "../src/lib/palette.ts";
+import { applyPluginThemeTokens } from "../src/lib/themePlugin.ts";
 
 interface FakeStorage {
   map: Map<string, string>;
@@ -282,6 +283,44 @@ test("applyPaletteTokens({}) keeps externally overwritten keys and clears its ow
   applyPaletteTokens({});
   assert.equal(style.props.get("--color-brand"), "#a996ff");
   assert.equal(style.props.get("--color-background"), "#deadbeef");
+});
+
+// ---------------------------------------------------------------------------
+// 系统级归属：预设色值与内置调色盘同源（都出自 palette.ts），等值巧合从
+// "极低概率"变成必现——让位清除必须先判"该 key 是否在主题插件已应用集合中"，
+// 值相等判定降级为非插件外部写入者的兜底（spec §4 双重判定）。
+// ---------------------------------------------------------------------------
+
+test("yield keeps a plugin-owned key even when its value is identical to the palette record", (t) => {
+  const style = installFakeStyle();
+  t.after(style.restore);
+  // 两系统模块级记录都归零，保证测试顺序无关。
+  applyPluginThemeTokens({});
+  applyPaletteTokens({});
+
+  // 调色盘写入并记录（如默认 石墨·沙丘）。
+  applyPaletteTokens({ "--color-brand": "#22302f", "--color-background": "#f3f6e3" });
+  // 插件 effect 先跑：声明同名 key 且写入**完全相同**的值——graphite-dune 预设即此场景。
+  applyPluginThemeTokens({ "--color-brand": "#22302f" });
+
+  // 调色盘让位：brand 归属插件 → 无论值是否与自己记录值全等都必须保留（修复前此处红）。
+  applyPaletteTokens({});
+  assert.equal(style.props.get("--color-brand"), "#22302f");
+});
+
+test("yield still clears a palette-only key at equal value when the plugin never declared it", (t) => {
+  const style = installFakeStyle();
+  t.after(style.restore);
+  applyPluginThemeTokens({});
+  applyPaletteTokens({});
+
+  applyPaletteTokens({ "--color-brand": "#22302f", "--color-background": "#f3f6e3" });
+  // 插件只声明 brand，未声明 --color-background（同上一步的插件集合）。
+  applyPluginThemeTokens({ "--color-brand": "#22302f" });
+
+  // background 非插件 key → 当前值等于自己记录值 → 正常清除回内置默认。
+  applyPaletteTokens({});
+  assert.equal(style.props.has("--color-background"), false);
 });
 
 // ---------------------------------------------------------------------------

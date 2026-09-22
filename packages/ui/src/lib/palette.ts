@@ -8,6 +8,7 @@
  * 各自只清自己的 key，保证任一方向都由后跑的 effect 收敛（spec §1/§4）。
  */
 import { readSafeLocalStorage, writeSafeLocalStorage } from "@/lib/browserEnvironment.js";
+import { hasAppliedThemeTokenKey } from "@/lib/themePlugin.js";
 import { resolveTheme, type Theme } from "@/useTheme.js";
 
 export const PALETTE_PRIMARY_STORAGE_KEY = "zcode-palette-primary";
@@ -365,27 +366,31 @@ function rootStyle(): CSSStyleDeclaration | undefined {
 
 /**
  * 调色盘专属已应用 token 记录：key → 自己最后一次写入的值（trim 后）。
- * 与 themePlugin 的 appliedThemeTokenKeys 结构复刻但完全独立；额外记录「值」
- * 是为了解决同名 key 的 remove-by-key 归属问题（浏览器验收 bug 修复）：
- * 内联 style 的 removeProperty 只按 key 名删除、不分辨当前值是谁写的，
- * effect 顺序（插件先、调色盘后）下，让位清空会把插件刚覆盖的同名值一并误删。
+ * 与 themePlugin 的 appliedThemeTokenKeys 结构复刻但完全独立，不共享写入记录；
+ * 「值」用于对非插件外部写入者的兜底归属判定（见 applyPaletteTokens 的双重判定）。
  */
 let appliedPaletteTokens: Map<string, string> = new Map();
 
 /**
- * 幂等应用：先按值归属清 stale keys，再全量写入当前集合（spec §4）。
- * - stale key 当前内联值 === 自己记录的写入值 → 归属调色盘，removeProperty 正常清除；
- * - 不相等 → 已被外部系统（主题插件）覆盖，保留不动；插件停用后由调色盘
- *   下一轮全量写入收回，两条路径都收敛到正确状态（与 effect 声明顺序无关）。
- * - 等值巧合边界：外部系统恰好写入与调色盘完全相同的值会被误删，概率极低，
- *   且视觉偏差仅为回退默认色，可接受。
- * 写入后按浏览器回读值重建记录，避免内联序列化差异导致后续归属比较失真。
+ * 幂等应用：先按双重归属判定清 stale keys，再全量写入当前集合（spec §4）。
+ * - 系统级归属（优先）：key 在主题插件已应用集合（hasAppliedThemeTokenKey）→ 保留，
+ *   无论值是否相同。预设色值与内置调色盘同源（都出自 palette.ts），选与当前调色盘
+ *   相同的预设（如 graphite-dune）时，插件写入值恰等于自己记录值——等值巧合由
+ *   "极低概率"变成必现，单凭值判定会把插件刚写入的 token 全部误删；
+ *   故引入插件已应用集合做系统级归属判定，值判定降级为兜底。
+ * - 值归属兜底（非插件 key）：当前内联值 === 自己记录值 → 属于调色盘 → 删除；
+ *   不相等 → 被其它外部写入者覆盖 → 保留（保留对外部其它写入者的保护）。
+ * 插件停用路径不变：插件先清自己的 key，调色盘随后全量写入收回，两条路径都收敛
+ * 到正确状态（与 effect 声明顺序无关）。写入后按浏览器回读值重建记录，避免内联
+ * 序列化差异导致后续归属比较失真。
  */
 export function applyPaletteTokens(tokens: Record<string, string>): void {
   const style = rootStyle();
   if (!style?.setProperty) return;
   for (const [key, ownValue] of appliedPaletteTokens) {
     if (key in tokens) continue;
+    // 系统级归属：主题插件已应用的 key 一律不动；值判定只兜底非插件 key。
+    if (hasAppliedThemeTokenKey(key)) continue;
     if (style.getPropertyValue(key).trim() === ownValue) {
       style.removeProperty(key);
     }
